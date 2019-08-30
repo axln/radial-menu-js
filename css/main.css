@@ -1,0 +1,21 @@
+body {
+	font-family: Arial, sans-serif;
+	font-size: 13px;
+	background: url("../img/background.jpg") no-repeat;
+}
+
+h1 {
+	font-size: 24px;
+	font-weight: normal;
+	color: white;
+}
+
+button {
+	font-size: 16px;
+}
+
+
+#icons {
+	display: none;
+	filter:url(#drop-shadow);
+}
