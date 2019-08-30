@@ -59,3 +59,6 @@ var svgMenu = new RadialMenu({
     svgMenu.close();
   };
 ```
+
+## License
+MIT
