@@ -86,16 +86,18 @@ RadialMenu.prototype.open = function () {
 RadialMenu.prototype.close = function () {
     var self = this;
 
-    var parentMenu;
-    while (parentMenu = self.parentMenu.pop()) {
-        parentMenu.remove();
-    }
-    self.parentItems = [];
+    if (self.currentMenu) {
+        var parentMenu;
+        while (parentMenu = self.parentMenu.pop()) {
+            parentMenu.remove();
+        }
+        self.parentItems = [];
 
-    RadialMenu.setClassAndWaitForTransition(self.currentMenu, 'menu inner').then(function () {
-        self.currentMenu.remove();
-        self.currentMenu = null;
-    });
+        RadialMenu.setClassAndWaitForTransition(self.currentMenu, 'menu inner').then(function () {
+            self.currentMenu.remove();
+            self.currentMenu = null;
+        });
+    }
 };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
