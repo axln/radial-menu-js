@@ -110,8 +110,13 @@ window.onload = function () {
         }
     });
 
-    var openMenu = document.getElementById('menu');
+    var openMenu = document.getElementById('openMenu');
     openMenu.onclick = function () {
         svgMenu.open();
+    };
+
+    var closeMenu = document.getElementById('closeMenu');
+    closeMenu.onclick = function () {
+        svgMenu.close();
     };
 };
