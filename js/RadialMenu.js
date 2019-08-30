@@ -573,5 +573,5 @@ RadialMenu.setClassAndWaitForTransition = function (node, newClass) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 RadialMenu.nextTick = function (fn) {
-    setTimeout(fn, 5);
+    setTimeout(fn, 10);
 };
