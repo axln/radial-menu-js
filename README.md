@@ -1,4 +1,4 @@
-# Radial Menu in pure JavaScript, HTML and SVG
+# Radial Menu in Pure JavaScript, HTML and SVG
 
 ![Radial menu screenshot](https://raw.githubusercontent.com/axln/radial-menu-js/master/radial-menu.png)
 
