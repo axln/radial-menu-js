@@ -1,5 +1,7 @@
 # Radial Menu in pure JavaScript, HTML and SVG
 
+![Radial menu screenshot](https://raw.githubusercontent.com/axln/radial-menu-js/master/radial-menu.png)
+
 ## Controls
 
  1. Go to [https://axln.github.io/radial-menu-js/index.html](https://axln.github.io/radial-menu-js/index.html).
