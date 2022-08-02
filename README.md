@@ -55,7 +55,7 @@ var svgMenu = new RadialMenu({
   };
 
   var closeMenu = document.getElementById('close');
-  openMenu.onclick = function () {
+  closeMenu.onclick = function () {
     svgMenu.close();
   };
 ```
