@@ -1,11 +1,10 @@
 'use strict';
 
 /**
- * https://github.com/axln/radial-menu-js
- * https://github.com/j3nda/radial-menu-js
- * About
  * Radial menu in pure JavaScript, HTML and SVG
  * License: MIT
+ * -- https://github.com/axln/radial-menu-js
+ * -- https://github.com/j3nda/radial-menu-js
  */
 class RadialMenu
 {
@@ -19,10 +18,11 @@ class RadialMenu
 		},
 		radiusInner: 0.4,
 		radiusSectorSpace: 0.06,
-		closeOnClick: true,
+		closeOnClick: true, // true or function(); will close(); after item is selected. [default: onClickFallback()]
+		closeOnClickOutside: true, // true or function(); it will close(); when item is not selected and click is outside of menu. [default: true]
 		nested: {
 			icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
-			title: true,
+			title: true, // show nested title?
 			//TODO:?it can show (number of nested menu)?
 			//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
 		}
@@ -30,13 +30,15 @@ class RadialMenu
 
 	constructor(params)
 	{
+		const THIS = this;
 		const defaultValues = this.defaultValues = RadialMenu._defaultValues;
+		this.uuid = this.generateUUID();
 		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
 
 		this.size = params.size || defaultValues.size;
 		this.onClick = params.onClick || function(item)
 		{
-			this.onClickFallback(item);
+			THIS.onClickFallback(item);
 		};
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
 
@@ -44,10 +46,17 @@ class RadialMenu
 		this.innerRadius = params.innerRadius ? params.innerRadius : this.radius * defaultValues.radius.multiInnerRadius;
 		this.sectorSpace = params.sectorSpace ? params.sectorSpace : this.radius * defaultValues.radius.multiSectorSpace;
 		this.sectorCount = Math.max(this.menuItems.length, defaultValues.minSectors);
-		this.closeOnClick = params.closeOnClick !== undefined ? !!params.closeOnClick : defaultValues.closeOnClick;
+		this.closeOnClick = (params.closeOnClick !== undefined
+			? !!params.closeOnClick
+			: defaultValues.closeOnClick
+		);
+		this.closeOnClickOutside = (params.closeOnClickOutside !== undefined
+			? !!params.closeOnClickOutside
+			: defaultValues.closeOnClickOutside
+		);
 		this.nested = this.merge(
 			defaultValues.nested,
-			(params.nested ? params.nested : null)
+			(params.nested ? params.nested : {})
 		);
 		this.scale = 1;//TODO:?ma smysl mit jiny scale?
 		this.holder = null;
@@ -55,12 +64,39 @@ class RadialMenu
 		this.parentItems = [];
 		this.levelItems = null;
 
-		this.createHolder();
-		this.addIconSymbols();
+		this.createHolder();//TODO:?multiple menuHolder?
+		this.addIconSymbols();//TODO:?iconSymbolsFactory?
 
 		this.currentMenu = null;
 		document.addEventListener('wheel', this.onMouseWheel.bind(this));//TODO:?enable/disable?
 		document.addEventListener('keydown', this.onKeyDown.bind(this));//TODO:?enable/disable?
+	}
+
+	generateUUID()
+	{
+		// -- https://stackoverflow.com/questions/105034/how-do-i-create-a-guid-uuid
+		// License: Public Domain / MIT
+		let d1 = new Date().getTime();//Timestamp
+		let d2 = ((typeof performance !== 'undefined') && performance.now && (performance.now() * 1000)) || 0; // Time in microseconds since page-load or 0 if unsupported
+		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
+			.replace(/[xy]/g, function(c)
+			{
+				let r = Math.random() * 16; // random number between 0 and 16
+				if (d1 > 0)
+				{
+					// Use timestamp until depleted
+					r = (d1 + r) % 16 | 0;
+					d1 = Math.floor(d1 / 16);
+				}
+				else
+				{
+					// Use microseconds since page-load if supported
+					r = (d2 + r) % 16 | 0;
+					d2 = Math.floor(d2 / 16);
+				}
+				return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+			})
+		;
 	}
 
 	onClickFallback(item)
@@ -70,44 +106,91 @@ class RadialMenu
 		console.info(item);
 	}
 
-	//TODO:?isOpen(){ return this.currentMenu == null; }
+	isOpen()
+	{
+		return (this.currentMenu !== null);
+	}
+
+	onClickOutside(event, THIS)
+	{
+		const menu = document.getElementById(THIS.uuid);
+		if (!menu)
+		{
+			return;
+		}
+		let target = event.target;
+		do
+		{
+			if (target == menu)
+			{
+				// click inside! do nothing...
+				return;
+			}
+			// go up thru DOM
+			target = target.parentNode;
+		}
+		while (target);
+
+		// click outside!
+		if (THIS.closeOnClickOutside && THIS.closeOnClickOutside instanceof Function)
+		{
+			THIS.closeOnClickOutside(THIS);
+		}
+		THIS.close();
+	}
 
 	open()
 	{
-		if (!this.currentMenu)
+		if (this.isOpen())
 		{
-			this.currentMenu = this.createMenu('menu inner', this.menuItems);
-			this.holder.appendChild(this.currentMenu);
-
-			// wait DOM commands to apply and then set class to allow transition to take effect
-			const THIS = this;
-			this.nextTick(function()
-			{
-				THIS.currentMenu.setAttribute('class', 'menu');
-			});
+			return;
 		}
+		this.currentMenu = this.createMenu('menu inner', this.menuItems);
+		this.holder.appendChild(this.currentMenu);
+
+		// wait DOM commands to apply and then set class to allow transition to take effect
+		const THIS = this;
+		this.nextTick(function()
+		{
+			THIS.currentMenu.setAttribute('class', 'menu');
+			if (THIS.closeOnClickOutside)
+			{
+				document.addEventListener('click', THIS.closeOnClickOutsideListener = function(event)
+				{
+					THIS.onClickOutside(event, THIS);
+				});
+			}
+		});
 	}
 
 	close()
 	{
-		if (this.currentMenu)
+		if (!this.isOpen())
 		{
-			let parentMenu;
-			while (parentMenu = this.parentMenu.pop())
-			{
-				parentMenu.remove();
-			}
-			this.parentItems = [];
+			return;
+		}
+		let parentMenu;
+		while (parentMenu = this.parentMenu.pop())
+		{
+			parentMenu.remove();
+		}
+		this.parentItems = [];
 
-			const THIS = this;
-			this.setClassAndWaitForTransition(this.currentMenu, 'menu inner')
-				.then(function()
+		const THIS = this;
+		this.setClassAndWaitForTransition(this.currentMenu, 'menu inner')
+			.then(function()
+			{
+				if (THIS.currentMenu !== null)
 				{
 					THIS.currentMenu.remove();
-					THIS.currentMenu = null;
-				})
-			;
-		}
+				}
+				THIS.currentMenu = null;
+				if (THIS.closeOnClickOutside)
+				{
+					document.removeEventListener('click', THIS.closeOnClickOutsideListener);
+				}
+			})
+		;
 	}
 
 	onClick(item)
@@ -127,6 +210,7 @@ class RadialMenu
 	createHolder()
 	{
 		this.holder = document.createElement('div');
+		this.holder.id = this.uuid;
 		this.holder.className = 'menuHolder';
 		this.holder.style.width = this.size + 'px';
 		this.holder.style.height = this.size + 'px';
@@ -350,7 +434,7 @@ class RadialMenu
 
 	onKeyDown(event)
 	{
-		if (!this.currentMenu)
+		if (!this.isOpen())
 		{
 			return;
 		}
@@ -390,7 +474,7 @@ class RadialMenu
 
 	onMouseWheel(event)
 	{
-		if (!this.currentMenu)
+		if (!this.isOpen())
 		{
 			return;
 		}
@@ -468,7 +552,7 @@ class RadialMenu
 		if (item)
 		{
 			g.setAttribute('class', 'sector');
-			if (index == 0)
+			if (index === 0)
 			{
 				g.setAttribute('class', 'sector selected');
 			}

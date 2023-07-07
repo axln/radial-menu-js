@@ -101,24 +101,35 @@ var menuItems = [
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 window.onload = function ()
 {
-    var svgMenu = new RadialMenu({
-        parent      : document.body,
-        size        : 400,
+    const svgMenu = new RadialMenu({
+        parent: document.body,
+        size: 400,
         closeOnClick: true,
-        menuItems   : menuItems
-        // onClick     : function (item)
-        // {
-        //     console.log('You have clicked:', item.id, item.title);
-        // }
+        menuItems: menuItems,
+        onClick: function(item)
+        {
+            console.log('You have clicked:', item.id, item.title);
+            console.log(item);
+        }
     });
 
-    var openMenu = document.getElementById('openMenu');
-    openMenu.onclick = function () {
+    const openMenu = document.getElementById('openMenu');
+    openMenu.onclick = function() {
         svgMenu.open();
     };
 
-    var closeMenu = document.getElementById('closeMenu');
-    closeMenu.onclick = function () {
+    const closeMenu = document.getElementById('closeMenu');
+    closeMenu.onclick = function() {
         svgMenu.close();
     };
+
+    document.addEventListener('contextmenu', function(event)
+    {
+        event.preventDefault();
+        if (svgMenu.isOpen())
+        {
+            return;
+        }
+        svgMenu.open();
+    });
 };

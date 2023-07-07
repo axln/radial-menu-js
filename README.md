@@ -4,16 +4,14 @@
 
 ## Controls
 
- 1. Go to [https://axln.github.io/radial-menu-js/index.html](https://axln.github.io/radial-menu-js/index.html).
-
+ 1. Go to [radial-menu-js/index.html](https://axln.github.io/radial-menu-js/index.html).
  2. Click Open Menu button.
-
  3. You can use mouse, mouse wheel and keyboard for navigation:
     * Arrow keys and mouse wheel to select menu item.
     * Enter to choose the selected menu item.
     * Esc/Backspace to return to parent menu and close menu.
  
- ## Usage Example
+## Usage Example
  
  ```javascript
 var svgMenu = new RadialMenu({
@@ -60,5 +58,24 @@ var svgMenu = new RadialMenu({
   };
 ```
 
+## Configuration
+
+```json
+{
+    closeOnClick: true, // boolean; will menu.close(), after item is selected. [default: true && menu.onClickFallback();]
+    closeOnClickOutside: true, // true or function(); it will menu.close(), when item is not selected and click is outside of menu. [default: true]
+
+    nested: { // nested ~ inner-menu behavior
+		icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+		title: true // show nested title?
+	}
+}
+```
+
 ## License
 MIT
+
+## Contributors
+
+* [Alexey Nesterenko](https://github.com/axln) 
+* [Jan Smid](https://github.com/j3nda)
