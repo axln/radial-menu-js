@@ -25,6 +25,23 @@ class RadialMenu
 			title: true, // show nested title?
 			//TODO:?it can show (number of nested menu)?
 			//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
+		},
+		ui: {
+			classes: {
+				menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
+				menu: "menu",
+				menuCreate: "menu inner", // main menu [{menuCreate} inner]
+				menuCreateNested: "menu outer", // nested menu [{menuCreate} outer]
+				itemSelected: "selected", // item, which is [selected]
+				itemIcon: "icons", // item's icon
+				itemSector: "sector", // item, which is active
+				itemDummy: "dummy", // item, which is not active
+				buttonCenter: "center", // button (close, back) ~ centered!
+			},
+			icons: {
+				back: {title: "Back", icon: "#return"},
+				close: {title: "Close", icon: "#close"},
+			}
 		}
 	}
 
@@ -36,35 +53,33 @@ class RadialMenu
 		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
 
 		this.size = params.size || defaultValues.size;
-		this.onClick = params.onClick || function(item)
-		{
-			THIS.onClickFallback(item);
-		};
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
 
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
 		this.innerRadius = params.innerRadius ? params.innerRadius : this.radius * defaultValues.radius.multiInnerRadius;
 		this.sectorSpace = params.sectorSpace ? params.sectorSpace : this.radius * defaultValues.radius.multiSectorSpace;
 		this.sectorCount = Math.max(this.menuItems.length, defaultValues.minSectors);
-		this.closeOnClick = (params.closeOnClick !== undefined
-			? !!params.closeOnClick
-			: defaultValues.closeOnClick
-		);
+		this.closeOnClick = params.closeOnClick !== undefined ? !!params.closeOnClick : defaultValues.closeOnClick;
 		this.closeOnClickOutside = (params.closeOnClickOutside !== undefined
-			? !!params.closeOnClickOutside
+			? (params.closeOnClickOutside instanceof Function ? params.closeOnClickOutside : !!params.closeOnClickOutside)
 			: defaultValues.closeOnClickOutside
 		);
+		this.onClick = params.onClick || this.onClickFallback;
 		this.nested = this.merge(
 			defaultValues.nested,
-			(params.nested ? params.nested : {})
+			params.nested || {}
 		);
-		this.scale = 1;//TODO:?ma smysl mit jiny scale?
+		this.ui = this.merge(
+			defaultValues.ui,
+			params.nested || {}
+		);
+		this.scale = 1;//TODO:?do we need different scale?
 		this.holder = null;
 		this.parentMenu = [];
 		this.parentItems = [];
 		this.levelItems = null;
 
-		this.createHolder();//TODO:?multiple menuHolder?
+		this.createHolder(this.ui.classes.menuContainer);
 		this.addIconSymbols();//TODO:?iconSymbolsFactory?
 
 		this.currentMenu = null;
@@ -101,9 +116,23 @@ class RadialMenu
 
 	onClickFallback(item)
 	{
-		console.warn('function onClick(item): is not defined by params! default!');
-		console.info(this.constructor.name + ".onClick()");
+		console.info(this.constructor.name + ".onClickFallback(item):");
 		console.info(item);
+		throw "onClick: function(item) {...}; // must be defined by params or default!";
+	}
+
+	onClickCallback(item)
+	{
+		if (this.closeOnClick)
+		{
+			this.close();
+		}
+		if (this.onClick && this.onClick instanceof Function)
+		{
+			this.onClick(item);
+			return;
+		}
+		this.onClickFallback(item);
 	}
 
 	isOpen()
@@ -145,14 +174,14 @@ class RadialMenu
 		{
 			return;
 		}
-		this.currentMenu = this.createMenu('menu inner', this.menuItems);
+		this.currentMenu = this.createMenu(this.ui.classes.menuCreate, this.menuItems);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
 		this.nextTick(function()
 		{
-			THIS.currentMenu.setAttribute('class', 'menu');
+			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
 			if (THIS.closeOnClickOutside)
 			{
 				document.addEventListener('click', THIS.closeOnClickOutsideListener = function(event)
@@ -177,7 +206,7 @@ class RadialMenu
 		this.parentItems = [];
 
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, 'menu inner')
+		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreate)
 			.then(function()
 			{
 				if (THIS.currentMenu !== null)
@@ -207,11 +236,11 @@ class RadialMenu
 		return null;
 	}
 
-	createHolder()
+	createHolder(classValue)
 	{
 		this.holder = document.createElement('div');
 		this.holder.id = this.uuid;
-		this.holder.className = 'menuHolder';
+		this.holder.className = classValue;
 		this.holder.style.width = this.size + 'px';
 		this.holder.style.height = this.size + 'px';
 
@@ -222,24 +251,24 @@ class RadialMenu
 	{
 		this.parentMenu.push(this.currentMenu);
 		this.parentItems.push(this.levelItems);
-		this.currentMenu = this.createMenu('menu inner', item.items, item);
+		this.currentMenu = this.createMenu(this.ui.classes.menuCreate, item.items, item);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
 		this.nextTick(function()
 		{
-			THIS.getParentMenu().setAttribute('class', 'menu outer');
-			THIS.currentMenu.setAttribute('class', 'menu');
+			THIS.getParentMenu().setAttribute('class', THIS.ui.classes.menuCreateNested);
+			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
 		});
 	}
 
 	returnToParentMenu()
 	{
-		this.getParentMenu().setAttribute('class', 'menu');
+		this.getParentMenu().setAttribute('class', this.ui.classes.menu);
 
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, 'menu inner')
+		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreate)
 			.then(function()
 			{
 				THIS.currentMenu.remove();
@@ -258,16 +287,9 @@ class RadialMenu
 			if (item.items)
 			{
 				this.showNestedMenu(item);
+				return;
 			}
-			else
-			if (this.onClick)
-			{
-				this.onClick(item);
-				if (this.closeOnClick)
-				{
-					this.close();
-				}
-			}
+			this.onClickCallback(item);
 		}
 	}
 
@@ -297,7 +319,7 @@ class RadialMenu
 		size = size || 8;//TODO:?magicNumber?default value?
 
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-		g.setAttribute('class', 'center');
+		g.setAttribute('class', this.ui.classes.buttonCenter);
 
 		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
 		g.appendChild(centerCircle);
@@ -374,19 +396,19 @@ class RadialMenu
 
 		if (nested)
 		{
-			this.createCenter(svg, 'Back', '#return', 8, nested); //TODO:??magicNumber??
+			this.createCenter(svg, this.ui.icons.back.title, this.ui.icons.back.icon, 8, nested); //TODO:??magicNumber??
 		}
 		else
 		{
-			this.createCenter(svg, 'Close', '#close', 7);//TODO:??magicNumber??
+			this.createCenter(svg, this.ui.icons.close.title, this.ui.icons.close.icon, 7);//TODO:??magicNumber??
 		}
 
 		svg.addEventListener('mousedown', function(event)
 		{
-			const className = event.target.parentNode.getAttribute('class').split(' ')[0];
-			switch (className)
+			const classNames = event.target.parentNode.getAttribute('class').split(' ');
+			for (let i = 0; i < classNames.length; i++)
 			{
-				case 'sector':
+				if (classNames[i] === THIS.ui.classes.itemSector)
 				{
 					const index = parseInt(event.target.parentNode.getAttribute('data-index'));
 					if (!isNaN(index))
@@ -395,27 +417,23 @@ class RadialMenu
 					}
 					break;
 				}
-				default:
-					break;
 			}
 		});
 		svg.addEventListener('click', function(event)
 		{
-			const className = event.target.parentNode.getAttribute('class').split(' ')[0];
-			switch (className)
+			const classNames = event.target.parentNode.getAttribute('class').split(' ');
+			for (let i = 0; i < classNames.length; i++)
 			{
-				case 'sector':
+				if (classNames[i] === THIS.ui.classes.itemSector)
 				{
 					THIS.handleClick();
 					break;
 				}
-				case 'center':
+				if (classNames[i] === THIS.ui.classes.buttonCenter)
 				{
 					THIS.handleCenterClick();
 					break;
 				}
-				default:
-					break;
 			}
 		});
 		return svg;
@@ -447,6 +465,7 @@ class RadialMenu
 		{
 			return;
 		}
+		//TODO:?enable keys?which one?
 		switch (event.key)
 		{
 			case 'Escape':
@@ -465,7 +484,7 @@ class RadialMenu
 			case 'ArrowRight':
 			case 'ArrowUp':
 			{
-				this.selectDelta(1);
+				this.selectDelta(+1);
 				event.preventDefault();
 				break;
 			}
@@ -493,7 +512,7 @@ class RadialMenu
 
 	getSelectedNode()
 	{
-		const items = this.currentMenu.getElementsByClassName('selected');
+		const items = this.currentMenu.getElementsByClassName(this.ui.classes.itemSelected);
 		if (items.length > 0)
 		{
 			return items[0];
@@ -522,9 +541,12 @@ class RadialMenu
 				const selectedNode = this.getSelectedNode();
 				if (selectedNode)
 				{
-					selectedNode.setAttribute('class', 'sector');
+					selectedNode.setAttribute('class', this.ui.classes.itemSector);
 				}
-				itemToSelect.setAttribute('class', 'sector selected');
+				itemToSelect.setAttribute(
+					'class',
+					[this.ui.classes.itemSector, this.ui.classes.itemSelected].join(' ')
+				);
 			}
 		}
 	}
@@ -560,10 +582,13 @@ class RadialMenu
 
 		if (item)
 		{
-			g.setAttribute('class', 'sector');
+			g.setAttribute('class', this.ui.classes.itemSector);
 			if (index === 0)
 			{
-				g.setAttribute('class', 'sector selected');
+				g.setAttribute(
+					'class',
+					[this.ui.classes.itemSector, this.ui.classes.itemSelected].join(' ')
+				);
 			}
 			g.setAttribute('data-id', item.id);
 			g.setAttribute('data-index', index);
@@ -599,7 +624,7 @@ class RadialMenu
 		}
 		else
 		{
-			g.setAttribute('class', 'dummy');
+			g.setAttribute('class', this.ui.classes.itemDummy);
 		}
 		svg.appendChild(g);
 	};
@@ -667,7 +692,7 @@ class RadialMenu
 	addIconSymbols()
 	{
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('class', 'icons');
+		svg.setAttribute('class', this.ui.classes.itemIcon);
 
 		// return
 		const returnSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
