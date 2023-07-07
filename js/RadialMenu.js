@@ -281,6 +281,15 @@ class RadialMenu
 		{
 			this.close();
 		}
+		// FIXME: https://github.com/axln/radial-menu-js/issues/3
+		// When you are in a submenu and exit (any way) too fast,
+		//   the event in the function '''RadialMenu.prototype.handleCenterClick'''
+		//   call '''self.returnToParentMenu();''' instead of '''self.close();'''.
+		//   This makes it difficult to tell when the menu is completely closed
+		//
+		// radial-menu-js/js/RadialMenu.js
+		// Line 137 in 6d027fc
+		// RadialMenu.prototype.handleCenterClick = function () {...}
 	}
 
 	createCenter(svg, title, icon, size, nested = null)

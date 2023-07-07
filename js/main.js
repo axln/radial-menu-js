@@ -105,6 +105,7 @@ window.onload = function ()
         parent: document.body,
         size: 400,
         closeOnClick: true,
+        // closeOnClickOutside: false,
         menuItems: menuItems,
         onClick: function(item)
         {
@@ -112,17 +113,14 @@ window.onload = function ()
             console.log(item);
         }
     });
-
-    const openMenu = document.getElementById('openMenu');
-    openMenu.onclick = function() {
+    document.getElementById('openMenu').addEventListener('click', function(event)
+    {
         svgMenu.open();
-    };
-
-    const closeMenu = document.getElementById('closeMenu');
-    closeMenu.onclick = function() {
+    });
+    document.getElementById('closeMenu').addEventListener('click', function(event)
+    {
         svgMenu.close();
-    };
-
+    });
     document.addEventListener('contextmenu', function(event)
     {
         event.preventDefault();

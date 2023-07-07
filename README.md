@@ -60,15 +60,15 @@ var svgMenu = new RadialMenu({
 
 ## Configuration
 
-```json
+```json5
 {
     closeOnClick: true, // boolean; will menu.close(), after item is selected. [default: true && menu.onClickFallback();]
     closeOnClickOutside: true, // true or function(); it will menu.close(), when item is not selected and click is outside of menu. [default: true]
 
     nested: { // nested ~ inner-menu behavior
-		icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
-		title: true // show nested title?
-	}
+        icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+        title: true // show nested title?
+    }
 }
 ```
 
