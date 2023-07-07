@@ -14,12 +14,13 @@ var menuItems = [
     {
         id   : 'drive',
         title: 'Drive',
-        icon: '#drive'
+        icon: '#drive',
+        selected: true
     },
     {
         id   : 'figth',
         title: 'Fight',
-        icon: '#fight'
+        icon: '#fight',
     },
     {
         id   : 'more',
@@ -34,7 +35,8 @@ var menuItems = [
             {
                 id   : 'sleep',
                 title: 'Sleep',
-                icon: '#sleep'
+                icon: '#sleep',
+                selected: true
             },
             {
                 id   : 'shower',

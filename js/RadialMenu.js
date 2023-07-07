@@ -580,7 +580,7 @@ class RadialMenu
 		if (item)
 		{
 			g.setAttribute('class', this.ui.classes.itemSector);
-			if (index === 0)
+			if (item.selected && item.selected === true)
 			{
 				g.setAttribute(
 					'class',
