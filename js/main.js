@@ -99,13 +99,15 @@ var menuItems = [
 ];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-window.onload = function () {
+window.onload = function ()
+{
     var svgMenu = new RadialMenu({
         parent      : document.body,
         size        : 400,
         closeOnClick: true,
         menuItems   : menuItems,
-        onClick     : function (item) {
+        onClick     : function (item)
+        {
             console.log('You have clicked:', item.id, item.title);
         }
     });
