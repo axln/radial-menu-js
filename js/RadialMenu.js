@@ -47,14 +47,11 @@ class RadialMenu
 
 	constructor(params)
 	{
-		const THIS = this;
 		const defaultValues = this.defaultValues = RadialMenu._defaultValues;
 		this.uuid = this.generateUUID();
 		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
-
 		this.size = params.size || defaultValues.size;
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
-
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
 		this.innerRadius = params.innerRadius ? params.innerRadius : this.radius * defaultValues.radius.multiInnerRadius;
 		this.sectorSpace = params.sectorSpace ? params.sectorSpace : this.radius * defaultValues.radius.multiSectorSpace;
@@ -79,7 +76,7 @@ class RadialMenu
 		this.parentItems = [];
 		this.levelItems = null;
 
-		this.createHolder(this.ui.classes.menuContainer);
+		this.createMenuContainer(this.ui.classes.menuContainer);
 		this.addIconSymbols();//TODO:?iconSymbolsFactory?
 
 		this.currentMenu = null;
@@ -150,7 +147,7 @@ class RadialMenu
 		let target = event.target;
 		do
 		{
-			if (target == menu)
+			if (target === menu)
 			{
 				// click inside! do nothing...
 				return;
@@ -179,7 +176,7 @@ class RadialMenu
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
-		this.nextTick(function()
+		this.postRunnable(function()
 		{
 			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
 			if (THIS.closeOnClickOutside)
@@ -236,7 +233,7 @@ class RadialMenu
 		return null;
 	}
 
-	createHolder(classValue)
+	createMenuContainer(classValue)
 	{
 		this.holder = document.createElement('div');
 		this.holder.id = this.uuid;
@@ -256,7 +253,7 @@ class RadialMenu
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
-		this.nextTick(function()
+		this.postRunnable(function()
 		{
 			THIS.getParentMenu().setAttribute('class', THIS.ui.classes.menuCreateNested);
 			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
@@ -369,7 +366,7 @@ class RadialMenu
 		this.levelItems = levelItems;
 
 		this.sectorCount = Math.max(this.levelItems.length, this.defaultValues.minSectors);
-		this.scale = this.calcScale();
+		this.scale = this.calculateScale();
 
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('class', classValue);
@@ -567,7 +564,7 @@ class RadialMenu
 
 	appendSectorPath(startAngleDeg, endAngleDeg, svg, item, index)
 	{
-		const centerPoint = this.getSectorCenter(startAngleDeg, endAngleDeg);
+		const centerPoint = this.getSectorPosition(startAngleDeg, endAngleDeg);
 		const translate = {
 			x: this.numberToString((1 - this.scale) * centerPoint.x),
 			y: this.numberToString((1 - this.scale) * centerPoint.y),
@@ -577,7 +574,7 @@ class RadialMenu
 		g.setAttribute('transform', 'translate(' + translate.x + ' ,' + translate.y + ') scale(' + this.scale + ')');
 
 		const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-		path.setAttribute('d', this.createSectorCmds(startAngleDeg, endAngleDeg));
+		path.setAttribute('d', this.createSector(startAngleDeg, endAngleDeg));
 		g.appendChild(path);
 
 		if (item)
@@ -629,20 +626,20 @@ class RadialMenu
 		svg.appendChild(g);
 	};
 
-	createSectorCmds(startAngleDeg, endAngleDeg)
+	createSector(startAngleDeg, endAngleDeg)
 	{
-		const initPoint = this.getDegreePos(startAngleDeg, this.radius);
+		const initPoint = this.getDegreePosition(startAngleDeg, this.radius);
 		let path = 'M' + this.pointToString(initPoint);
 		const radiusAfterScale = this.radius * (1 / this.scale);
 
-		path += 'A' + radiusAfterScale + ' ' + radiusAfterScale + ' 0 0 0' + this.pointToString(this.getDegreePos(endAngleDeg, this.radius));
-		path += 'L' + this.pointToString(this.getDegreePos(endAngleDeg, this.innerRadius));
+		path += 'A' + radiusAfterScale + ' ' + radiusAfterScale + ' 0 0 0' + this.pointToString(this.getDegreePosition(endAngleDeg, this.radius));
+		path += 'L' + this.pointToString(this.getDegreePosition(endAngleDeg, this.innerRadius));
 
 		const radiusDiff = this.radius - this.innerRadius;
 		const radiusDelta = (radiusDiff - (radiusDiff * this.scale)) / 2;
 		const innerRadius = (this.innerRadius + radiusDelta) * (1 / this.scale);
 
-		path += 'A' + innerRadius + ' ' + innerRadius + ' 0 0 1 ' + this.pointToString(this.getDegreePos(startAngleDeg, this.innerRadius));
+		path += 'A' + innerRadius + ' ' + innerRadius + ' 0 0 1 ' + this.pointToString(this.getDegreePosition(startAngleDeg, this.innerRadius));
 		path += 'Z';
 
 		return path;
@@ -672,7 +669,7 @@ class RadialMenu
 		return circle;
 	};
 
-	calcScale()
+	calculateScale()
 	{
 		const totalSpace = this.sectorSpace * this.sectorCount;
 		const circleLength = Math.PI * 2 * this.radius;
@@ -681,9 +678,9 @@ class RadialMenu
 		return (this.radius - radiusDelta) / this.radius;
 	}
 
-	getSectorCenter(startAngleDeg, endAngleDeg)
+	getSectorPosition(startAngleDeg, endAngleDeg)
 	{
-		return this.getDegreePos(
+		return this.getDegreePosition(
 			(startAngleDeg + endAngleDeg) / 2,
 			this.innerRadius + (this.radius - this.innerRadius) / 2
 		);
@@ -726,7 +723,7 @@ class RadialMenu
 		this.holder.appendChild(svg);
 	}
 
-	getDegreePos(angleDeg, length)
+	getDegreePosition(angleDeg, length)
 	{
 		return {
 			x: Math.sin(this.degToRad(angleDeg)) * length,
@@ -786,7 +783,7 @@ class RadialMenu
 		{
 			function handler(event)
 			{
-				if (event.target == node && event.propertyName == 'visibility')
+				if (event.target === node && event.propertyName === 'visibility')
 				{
 					node.removeEventListener('transitionend', handler);
 					resolve();
@@ -797,9 +794,10 @@ class RadialMenu
 		});
 	}
 
-	nextTick(fn)
+	postRunnable(fn, timeoutMs = 10)
 	{
-		setTimeout(fn, 10);//TODO:?magicNumber?
+		//TODO:??idk if i like it. it looks messy due prev. RadialMenu.prototype approach!?
+		setTimeout(fn, timeoutMs);
 	}
 
 	isObject(item)
@@ -811,7 +809,7 @@ class RadialMenu
 	 * Deep merge two objects.
 	 * -- https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge?page=1&tab=scoredesc#tab-top
 	 * @param target
-	 * @param ...sources
+	 * @param sources
 	 */
 	merge(target, ...sources)
 	{
