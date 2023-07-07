@@ -105,11 +105,11 @@ window.onload = function ()
         parent      : document.body,
         size        : 400,
         closeOnClick: true,
-        menuItems   : menuItems,
-        onClick     : function (item)
-        {
-            console.log('You have clicked:', item.id, item.title);
-        }
+        menuItems   : menuItems
+        // onClick     : function (item)
+        // {
+        //     console.log('You have clicked:', item.id, item.title);
+        // }
     });
 
     var openMenu = document.getElementById('openMenu');

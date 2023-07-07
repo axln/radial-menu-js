@@ -9,7 +9,7 @@
  */
 class RadialMenu
 {
-	static defaultValues = {
+	static _defaultValues = {
 		size: 100, // aka DEFAULT_SIZE
 		minSectors: 6, // aka MIN_SECTORS
 		radius: {
@@ -19,23 +19,36 @@ class RadialMenu
 		},
 		radiusInner: 0.4,
 		radiusSectorSpace: 0.06,
+		closeOnClick: true,
+		nested: {
+			icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+			title: true,
+			//TODO:?it can show (number of nested menu)?
+			//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
+		}
 	}
 
-	constructor(params, defaultValues = RadialMenu.defaultValues)
+	constructor(params)
 	{
-		this._defaultValues = defaultValues;
-		this.parent = params.parent || [];
+		const defaultValues = this.defaultValues = RadialMenu._defaultValues;
+		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
 
 		this.size = params.size || defaultValues.size;
-		this.onClick = params.onClick || null;
+		this.onClick = params.onClick || function(item)
+		{
+			this.onClickFallback(item);
+		};
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
 
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
 		this.innerRadius = params.innerRadius ? params.innerRadius : this.radius * defaultValues.radius.multiInnerRadius;
 		this.sectorSpace = params.sectorSpace ? params.sectorSpace : this.radius * defaultValues.radius.multiSectorSpace;
 		this.sectorCount = Math.max(this.menuItems.length, defaultValues.minSectors);
-		this.closeOnClick = params.closeOnClick !== undefined ? !!params.closeOnClick : false;
-
+		this.closeOnClick = params.closeOnClick !== undefined ? !!params.closeOnClick : defaultValues.closeOnClick;
+		this.nested = this.merge(
+			defaultValues.nested,
+			(params.nested ? params.nested : null)
+		);
 		this.scale = 1;//TODO:?ma smysl mit jiny scale?
 		this.holder = null;
 		this.parentMenu = [];
@@ -48,6 +61,13 @@ class RadialMenu
 		this.currentMenu = null;
 		document.addEventListener('wheel', this.onMouseWheel.bind(this));//TODO:?enable/disable?
 		document.addEventListener('keydown', this.onKeyDown.bind(this));//TODO:?enable/disable?
+	}
+
+	onClickFallback(item)
+	{
+		console.warn('function onClick(item): is not defined by params! default!');
+		console.info(this.constructor.name + ".onClick()");
+		console.info(item);
 	}
 
 	//TODO:?isOpen(){ return this.currentMenu == null; }
@@ -90,6 +110,11 @@ class RadialMenu
 		}
 	}
 
+	onClick(item)
+	{
+		return item;
+	}
+
 	getParentMenu()
 	{
 		if (this.parentMenu.length > 0)
@@ -113,7 +138,7 @@ class RadialMenu
 	{
 		this.parentMenu.push(this.currentMenu);
 		this.parentItems.push(this.levelItems);
-		this.currentMenu = this.createMenu('menu inner', item.items, true);
+		this.currentMenu = this.createMenu('menu inner', item.items, item);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
@@ -142,16 +167,16 @@ class RadialMenu
 
 	handleClick()
 	{
-		var selectedIndex = this.getSelectedIndex();
+		const selectedIndex = this.getSelectedIndex();
 		if (selectedIndex >= 0)
 		{
-			var item = this.levelItems[selectedIndex];
+			const item = this.levelItems[selectedIndex];
 			if (item.items)
 			{
 				this.showNestedMenu(item);
 			}
 			else
-			if (this.onClick)//TODO:????
+			if (this.onClick)
 			{
 				this.onClick(item);
 				if (this.closeOnClick)
@@ -174,23 +199,29 @@ class RadialMenu
 		}
 	}
 
-	createCenter(svg, title, icon, size)
+	createCenter(svg, title, icon, size, nested = null)
 	{
-		size = size || 8;//TODO:?default value?
-		var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+		size = size || 8;//TODO:?magicNumber?default value?
+
+		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 		g.setAttribute('class', 'center');
 
-		var centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
+		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
 		g.appendChild(centerCircle);
-		if (text)//TODO:?odkud to bere?text neni param!?
+
+		if (nested && this.nested.title)
 		{
-			var text = this.createText(0, 0, title);
+			const text = this.createText(0, +size, nested.title);
 			g.appendChild(text);
 		}
 
 		if (icon)
 		{
-			var use = this.createUseTag(0, 0, icon);
+			if (nested && this.nested.icon)
+			{
+				icon = (this.nested.icon === true ? nested.icon : this.nested.icon);
+			}
+			const use = this.createUseTag(0, 0, icon);
 			use.setAttribute('width', size);
 			use.setAttribute('height', size);
 			use.setAttribute('transform', 'translate(-' + this.numberToString(size / 2) + ',-' + this.numberToString(size / 2) + ')');
@@ -222,27 +253,25 @@ class RadialMenu
 		const THIS = this;
 		this.levelItems = levelItems;
 
-		this.sectorCount = Math.max(this.levelItems.length, this._defaultValues.minSectors);
+		this.sectorCount = Math.max(this.levelItems.length, this.defaultValues.minSectors);
 		this.scale = this.calcScale();
 
-		var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('class', classValue);
 		svg.setAttribute('viewBox', '-50 -50 100 100');
 		svg.setAttribute('width', this.size);
 		svg.setAttribute('height', this.size);
 
-		var angleStep = 360 / this.sectorCount;
-		var angleShift = angleStep / 2 + 270;
+		const angleStep = 360 / this.sectorCount;
+		const angleShift = angleStep / 2 + 270;
+		const indexOffset = this.getIndexOffset();
 
-		var indexOffset = this.getIndexOffset();
-
-		for (var i = 0; i < this.sectorCount; ++i)
+		for (let i = 0; i < this.sectorCount; ++i)
 		{
-			var startAngle = angleShift + angleStep * i;
-			var endAngle = angleShift + angleStep * (i + 1);
-
-			var itemIndex = this.resolveLoopIndex(this.sectorCount - i + indexOffset, this.sectorCount);
-			var item = null;
+			const startAngle = angleShift + angleStep * i;
+			const endAngle = angleShift + angleStep * (i + 1);
+			const itemIndex = this.resolveLoopIndex(this.sectorCount - i + indexOffset, this.sectorCount);
+			let item = null;
 			if (itemIndex >= 0 && itemIndex < this.levelItems.length)
 			{
 				item = this.levelItems[itemIndex];
@@ -252,7 +281,7 @@ class RadialMenu
 
 		if (nested)
 		{
-			this.createCenter(svg, 'Close', '#return', 8); //TODO:??magicNumber??
+			this.createCenter(svg, 'Back', '#return', 8, nested); //TODO:??magicNumber??
 		}
 		else
 		{
@@ -261,12 +290,12 @@ class RadialMenu
 
 		svg.addEventListener('mousedown', function(event)
 		{
-			var className = event.target.parentNode.getAttribute('class').split(' ')[0];
+			const className = event.target.parentNode.getAttribute('class').split(' ')[0];
 			switch (className)
 			{
 				case 'sector':
 				{
-					var index = parseInt(event.target.parentNode.getAttribute('data-index'));
+					const index = parseInt(event.target.parentNode.getAttribute('data-index'));
 					if (!isNaN(index))
 					{
 						THIS.setSelectedIndex(index);
@@ -279,7 +308,7 @@ class RadialMenu
 		});
 		svg.addEventListener('click', function(event)
 		{
-			var className = event.target.parentNode.getAttribute('class').split(' ')[0];
+			const className = event.target.parentNode.getAttribute('class').split(' ')[0];
 			switch (className)
 			{
 				case 'sector':
@@ -301,7 +330,7 @@ class RadialMenu
 
 	selectDelta(indexDelta)
 	{
-		var selectedIndex = this.getSelectedIndex();
+		let selectedIndex = this.getSelectedIndex();
 		if (selectedIndex < 0)
 		{
 			selectedIndex = 0;
@@ -365,20 +394,13 @@ class RadialMenu
 		{
 			return;
 		}
-		var delta = -event.deltaY;
-		if (delta > 0)
-		{
-			this.selectDelta(1);
-		}
-		else
-		{
-			this.selectDelta(-1);
-		}
+		const delta = -event.deltaY;
+		this.selectDelta(delta > 0 ? +1 : -1);
 	}
 
 	getSelectedNode()
 	{
-		var items = this.currentMenu.getElementsByClassName('selected');
+		const items = this.currentMenu.getElementsByClassName('selected');
 		if (items.length > 0)
 		{
 			return items[0];
@@ -388,23 +410,23 @@ class RadialMenu
 
 	getSelectedIndex()
 	{
-		var selectedNode = this.getSelectedNode();
+		const selectedNode = this.getSelectedNode();
 		if (selectedNode)
 		{
 			return parseInt(selectedNode.getAttribute('data-index'));
 		}
 		return -1;
-	};
+	}
 
 	setSelectedIndex(index)
 	{
 		if (index >= 0 && index < this.levelItems.length)
 		{
-			var items = this.currentMenu.querySelectorAll('g[data-index="' + index + '"]');
+			const items = this.currentMenu.querySelectorAll('g[data-index="' + index + '"]');
 			if (items.length > 0)
 			{
-				var itemToSelect = items[0];
-				var selectedNode = this.getSelectedNode();
+				const itemToSelect = items[0];
+				const selectedNode = this.getSelectedNode();
 				if (selectedNode)
 				{
 					selectedNode.setAttribute('class', 'sector');
@@ -416,7 +438,7 @@ class RadialMenu
 
 	createUseTag(x, y, link)
 	{
-		var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+		const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
 
 		use.setAttribute('x', this.numberToString(x));
 		use.setAttribute('y', this.numberToString(y));
@@ -430,16 +452,16 @@ class RadialMenu
 
 	appendSectorPath(startAngleDeg, endAngleDeg, svg, item, index)
 	{
-		var centerPoint = this.getSectorCenter(startAngleDeg, endAngleDeg);
-		var translate = {
+		const centerPoint = this.getSectorCenter(startAngleDeg, endAngleDeg);
+		const translate = {
 			x: this.numberToString((1 - this.scale) * centerPoint.x),
-			y: this.numberToString((1 - this.scale) * centerPoint.y)
+			y: this.numberToString((1 - this.scale) * centerPoint.y),
 		};
 
-		var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 		g.setAttribute('transform', 'translate(' + translate.x + ' ,' + translate.y + ') scale(' + this.scale + ')');
 
-		var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+		const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 		path.setAttribute('d', this.createSectorCmds(startAngleDeg, endAngleDeg));
 		g.appendChild(path);
 
@@ -455,7 +477,7 @@ class RadialMenu
 
 			if (item.title)
 			{
-				var text = this.createText(centerPoint.x, centerPoint.y, item.title);
+				const text = this.createText(centerPoint.x, centerPoint.y, item.title);
 				if (item.icon)
 				{
 					text.setAttribute('transform', 'translate(0,8)');
@@ -469,7 +491,7 @@ class RadialMenu
 
 			if (item.icon)
 			{
-				var use = this.createUseTag(centerPoint.x, centerPoint.y, item.icon);
+				const use = this.createUseTag(centerPoint.x, centerPoint.y, item.icon);
 				if (item.title)
 				{
 					use.setAttribute('transform', 'translate(-5,-8)');
@@ -491,16 +513,17 @@ class RadialMenu
 
 	createSectorCmds(startAngleDeg, endAngleDeg)
 	{
-		var initPoint = this.getDegreePos(startAngleDeg, this.radius);
-		var path = 'M' + this.pointToString(initPoint);
+		const initPoint = this.getDegreePos(startAngleDeg, this.radius);
+		let path = 'M' + this.pointToString(initPoint);
+		const radiusAfterScale = this.radius * (1 / this.scale);
 
-		var radiusAfterScale = this.radius * (1 / this.scale);
 		path += 'A' + radiusAfterScale + ' ' + radiusAfterScale + ' 0 0 0' + this.pointToString(this.getDegreePos(endAngleDeg, this.radius));
 		path += 'L' + this.pointToString(this.getDegreePos(endAngleDeg, this.innerRadius));
 
-		var radiusDiff  = this.radius - this.innerRadius;
-		var radiusDelta = (radiusDiff - (radiusDiff * this.scale)) / 2;
-		var innerRadius = (this.innerRadius + radiusDelta) * (1 / this.scale);
+		const radiusDiff = this.radius - this.innerRadius;
+		const radiusDelta = (radiusDiff - (radiusDiff * this.scale)) / 2;
+		const innerRadius = (this.innerRadius + radiusDelta) * (1 / this.scale);
+
 		path += 'A' + innerRadius + ' ' + innerRadius + ' 0 0 1 ' + this.pointToString(this.getDegreePos(startAngleDeg, this.innerRadius));
 		path += 'Z';
 
@@ -509,12 +532,12 @@ class RadialMenu
 
 	createText(x, y, title)
 	{
-		var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
 		text.setAttribute('text-anchor', 'middle');
 		text.setAttribute('x', this.numberToString(x));
 		text.setAttribute('y', this.numberToString(y));
-		text.setAttribute('font-size', '38%');
+		text.setAttribute('font-size', '38%');//TODO:?fontSize?
 		text.innerHTML = title;
 
 		return text;
@@ -522,7 +545,7 @@ class RadialMenu
 
 	createCircle(x, y, r)
 	{
-		var circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+		const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
 
 		circle.setAttribute('cx', this.numberToString(x));
 		circle.setAttribute('cy', this.numberToString(y));
@@ -533,9 +556,9 @@ class RadialMenu
 
 	calcScale()
 	{
-		var totalSpace = this.sectorSpace * this.sectorCount;
-		var circleLength = Math.PI * 2 * this.radius;
-		var radiusDelta = this.radius - (circleLength - totalSpace) / (Math.PI * 2);
+		const totalSpace = this.sectorSpace * this.sectorCount;
+		const circleLength = Math.PI * 2 * this.radius;
+		const radiusDelta = this.radius - (circleLength - totalSpace) / (Math.PI * 2);
 
 		return (this.radius - radiusDelta) / this.radius;
 	}
@@ -550,15 +573,15 @@ class RadialMenu
 
 	addIconSymbols()
 	{
-		var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('class', 'icons');
 
 		// return
-		var returnSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+		const returnSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
 		returnSymbol.setAttribute('id', 'return');
 		returnSymbol.setAttribute('viewBox', '0 0 489.394 489.394');
 
-		var returnPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+		const returnPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 		returnPath.setAttribute('d', "M375.789,92.867H166.864l17.507-42.795c3.724-9.132,1-19.574-6.691-25.744c-7.701-6.166-18.538-6.508-26.639-0.879" +
 			"L9.574,121.71c-6.197,4.304-9.795,11.457-9.563,18.995c0.231,7.533,4.261,14.446,10.71,18.359l147.925,89.823" +
 			"c8.417,5.108,19.18,4.093,26.481-2.499c7.312-6.591,9.427-17.312,5.219-26.202l-19.443-41.132h204.886" +
@@ -569,11 +592,12 @@ class RadialMenu
 		returnSymbol.appendChild(returnPath);
 		svg.appendChild(returnSymbol);
 
-		var closeSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+		// close
+		const closeSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
 		closeSymbol.setAttribute('id', 'close');
 		closeSymbol.setAttribute('viewBox', '0 0 41.756 41.756');
 
-		var closePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+		const closePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
 		closePath.setAttribute('d', "M27.948,20.878L40.291,8.536c1.953-1.953,1.953-5.119,0-7.071c-1.951-1.952-5.119-1.952-7.07,0L20.878,13.809L8.535,1.465" +
 			"c-1.951-1.952-5.119-1.952-7.07,0c-1.953,1.953-1.953,5.119,0,7.071l12.342,12.342L1.465,33.22c-1.953,1.953-1.953,5.119,0,7.071" +
 			"C2.44,41.268,3.721,41.755,5,41.755c1.278,0,2.56-0.487,3.535-1.464l12.343-12.342l12.343,12.343" +
@@ -606,7 +630,7 @@ class RadialMenu
 		else
 		if (n)
 		{
-			var r = (+n).toFixed(5);
+			let r = (+n).toFixed(5);//TODO:?magicNumber?
 			if (r.match(/\./))
 			{
 				r = r.replace(/\.?0+$/, '');
@@ -620,14 +644,12 @@ class RadialMenu
 	{
 		if (index < 0)
 		{
-			index = length + index;
+			return length + index;
 		}
-
 		if (index >= length)
 		{
-			index = index - length;
+			return index - length;
 		}
-
 		if (index < length)
 		{
 			return index;
@@ -659,6 +681,45 @@ class RadialMenu
 
 	nextTick(fn)
 	{
-		setTimeout(fn, 10);
+		setTimeout(fn, 10);//TODO:?magicNumber?
+	}
+
+	isObject(item)
+	{
+		return (item && typeof item === 'object' && !Array.isArray(item));
+	}
+
+	/**
+	 * Deep merge two objects.
+	 * -- https://stackoverflow.com/questions/27936772/how-to-deep-merge-instead-of-shallow-merge?page=1&tab=scoredesc#tab-top
+	 * @param target
+	 * @param ...sources
+	 */
+	merge(target, ...sources)
+	{
+		if (!sources.length)
+		{
+			return target;
+		}
+		const source = sources.shift();
+		if (this.isObject(target) && this.isObject(source))
+		{
+			for (const key in source)
+			{
+				if (this.isObject(source[key]))
+				{
+					if (!target[key])
+					{
+						Object.assign(target, {[key]: {}});
+					}
+					this.merge(target[key], source[key]);
+				}
+				else
+				{
+					Object.assign(target, { [key]: source[key] });
+				}
+			}
+		}
+		return this.merge(target, ...sources);
 	}
 }
