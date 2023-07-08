@@ -168,6 +168,7 @@ window.onload = function ()
                 ]
             }
         ],
+        multiInnerRadius: 0.2,
         ui: {
             classes: {
                 menuContainer: "menuHolder2",
@@ -176,6 +177,9 @@ window.onload = function ()
                 menuCreateNested: "menu2 outer",
                 menuOpen: "open2",
                 menuClose: "close2"
+            },
+            nested: {
+                title: false
             }
         }
     });

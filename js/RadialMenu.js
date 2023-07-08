@@ -20,12 +20,6 @@ class RadialMenu
 		radiusSectorSpace: 0.06,
 		closeOnClick: true, // true or function(); will close(); after item is selected. [default: onClickFallback()]
 		closeOnClickOutside: true, // true or function(); it will close(); when item is not selected and click is outside of menu. [default: true]
-		nested: {
-			icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
-			title: true, // show nested title?
-			//TODO:?it can show (number of nested menu)?
-			//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
-		},
 		ui: {
 			classes: {
 				menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
@@ -44,6 +38,12 @@ class RadialMenu
 			icons: {
 				back: {title: "Back", icon: "#return"},
 				close: {title: "Close", icon: "#close"},
+			},
+			nested: {
+				icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+				title: true, // show nested title?
+				//TODO:?it can show (number of nested menu)?
+				//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
 			}
 		}
 	}
@@ -57,8 +57,14 @@ class RadialMenu
 		this.size = params.size || defaultValues.size;
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
-		this.innerRadius = params.innerRadius ? params.innerRadius : this.radius * defaultValues.radius.multiInnerRadius;
-		this.sectorSpace = params.sectorSpace ? params.sectorSpace : this.radius * defaultValues.radius.multiSectorSpace;
+		this.innerRadius = params.innerRadius
+			? params.innerRadius
+			: this.radius * (params.multiInnerRadius ? params.multiInnerRadius : defaultValues.radius.multiInnerRadius)
+		;
+		this.sectorSpace = params.sectorSpace
+			? params.sectorSpace
+			: this.radius * (params.multiSectorSpace ? params.multiSectorSpace : defaultValues.radius.multiSectorSpace)
+		;
 		this.sectorCount = Math.max(this.menuItems.length, defaultValues.minSectors);
 		this.closeOnClick = params.closeOnClick !== undefined ? !!params.closeOnClick : defaultValues.closeOnClick;
 		this.closeOnClickOutside = (params.closeOnClickOutside !== undefined
@@ -66,10 +72,6 @@ class RadialMenu
 			: defaultValues.closeOnClickOutside
 		);
 		this.onClick = params.onClick || this.onClickFallback;
-		this.nested = this.merge(
-			defaultValues.nested,
-			params.nested || {}
-		);
 		this.ui = this.merge(
 			defaultValues.ui,
 			params.ui || {}
@@ -347,7 +349,7 @@ class RadialMenu
 		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
 		g.appendChild(centerCircle);
 
-		if (nested && this.nested.title)
+		if (nested && this.ui.nested.title)
 		{
 			const text = this.createText(0, +size, nested.title);
 			g.appendChild(text);
@@ -355,9 +357,9 @@ class RadialMenu
 
 		if (icon)
 		{
-			if (nested && this.nested.icon)
+			if (nested && this.ui.nested.icon)
 			{
-				icon = (this.nested.icon === true ? nested.icon : this.nested.icon);
+				icon = (this.ui.nested.icon === true ? nested.icon : this.ui.nested.icon);
 			}
 			const use = this.createUseTag(0, 0, icon);
 			use.setAttribute('width', size);
