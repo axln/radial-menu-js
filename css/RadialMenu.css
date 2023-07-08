@@ -4,7 +4,6 @@ div.menuHolder {
     position: relative;
     margin: 10px;
 }
-
 svg.icons {
     display: none;
 }
@@ -47,7 +46,6 @@ svg.menu > g.sector > use {
 
 svg.menu > g.sector:hover > path {
     fill: #F9A602D0;
-
 }
 
 svg.menu > g.sector.selected > path {

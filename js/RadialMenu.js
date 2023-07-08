@@ -30,11 +30,14 @@ class RadialMenu
 			classes: {
 				menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
 				menu: "menu",
-				menuCreate: "menu inner", // main menu [{menuCreate} inner]
-				menuCreateNested: "menu outer", // nested menu [{menuCreate} outer]
+				menuOpen: "open", // menu is visible [open]
+				menuClose: "close", // menu is not-visible [close]
+				menuCreateParent: "menu inner", // main menu [{menu} inner]
+				menuCreateNested: "menu outer", // nested menu [{menu} outer]
 				itemSelected: "selected", // item, which is [selected]
 				itemIcon: "icons", // item's icon
 				itemSector: "sector", // item, which is active
+				itemSectorNested: "more", // item, which has nested items... [more]
 				itemDummy: "dummy", // item, which is not active
 				buttonCenter: "center", // button (close, back) ~ centered!
 			},
@@ -47,7 +50,8 @@ class RadialMenu
 
 	constructor(params)
 	{
-		const defaultValues = this.defaultValues = RadialMenu._defaultValues;
+		const defaultValues = this.merge({}, RadialMenu._defaultValues);
+		this.defaultValues = defaultValues;
 		this.uuid = this.generateUUID();
 		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
 		this.size = params.size || defaultValues.size;
@@ -68,7 +72,7 @@ class RadialMenu
 		);
 		this.ui = this.merge(
 			defaultValues.ui,
-			params.nested || {}
+			params.ui || {}
 		);
 		this.scale = 1;//TODO:?do we need different scale?
 		this.holder = null;
@@ -140,7 +144,7 @@ class RadialMenu
 	onClickOutside(event, THIS)
 	{
 		const menu = document.getElementById(THIS.uuid);
-		if (!menu)
+		if (!menu || THIS.uuid !== menu.id)
 		{
 			return;
 		}
@@ -165,20 +169,23 @@ class RadialMenu
 		THIS.close();
 	}
 
-	open()
+	open(x = undefined, y = undefined)
 	{
 		if (this.isOpen())
 		{
 			return;
 		}
-		this.currentMenu = this.createMenu(this.ui.classes.menuCreate, this.menuItems);
+		this.currentMenu = this.createMenu(this.ui.classes.menuCreateParent, this.menuItems);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
 		this.postRunnable(function()
 		{
-			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
+			THIS.currentMenu.setAttribute(
+				'class',
+				[THIS.ui.classes.menu, THIS.ui.classes.menuOpen].join(' ')
+			);
 			if (THIS.closeOnClickOutside)
 			{
 				document.addEventListener('click', THIS.closeOnClickOutsideListener = function(event)
@@ -187,6 +194,17 @@ class RadialMenu
 				});
 			}
 		});
+		const menuContainer = document.getElementById(this.uuid);
+		menuContainer.classList.remove(this.ui.classes.menuClose);
+		menuContainer.classList.add(this.ui.classes.menuOpen);
+		if (x !== undefined)
+		{
+			menuContainer.style.left = (x - this.size / 2) + "px";
+		}
+		if (y !== undefined)
+		{
+			menuContainer.style.top = (y - this.size / 2) + "px";
+		}
 	}
 
 	close()
@@ -203,7 +221,7 @@ class RadialMenu
 		this.parentItems = [];
 
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreate)
+		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreateParent)
 			.then(function()
 			{
 				if (THIS.currentMenu !== null)
@@ -215,6 +233,9 @@ class RadialMenu
 				{
 					document.removeEventListener('click', THIS.closeOnClickOutsideListener);
 				}
+				const menuContainer = document.getElementById(THIS.uuid);
+				menuContainer.classList.remove(THIS.ui.classes.menuOpen);
+				menuContainer.classList.add(THIS.ui.classes.menuClose);
 			})
 		;
 	}
@@ -248,7 +269,7 @@ class RadialMenu
 	{
 		this.parentMenu.push(this.currentMenu);
 		this.parentItems.push(this.levelItems);
-		this.currentMenu = this.createMenu(this.ui.classes.menuCreate, item.items, item);
+		this.currentMenu = this.createMenu(this.ui.classes.menuCreateParent, item.items, item);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
@@ -256,16 +277,21 @@ class RadialMenu
 		this.postRunnable(function()
 		{
 			THIS.getParentMenu().setAttribute('class', THIS.ui.classes.menuCreateNested);
-			THIS.currentMenu.setAttribute('class', THIS.ui.classes.menu);
+			THIS.currentMenu.setAttribute(
+				'class',
+				[THIS.ui.classes.menu, THIS.ui.classes.menuOpen].join(' ')
+			);
 		});
 	}
 
 	returnToParentMenu()
 	{
-		this.getParentMenu().setAttribute('class', this.ui.classes.menu);
-
+		this.getParentMenu().setAttribute(
+			'class',
+			[this.ui.classes.menu, this.ui.classes.menuOpen].join(' ')
+		);
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreate)
+		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreateParent)
 			.then(function()
 			{
 				THIS.currentMenu.remove();
@@ -364,7 +390,6 @@ class RadialMenu
 	{
 		const THIS = this;
 		this.levelItems = levelItems;
-
 		this.sectorCount = Math.max(this.levelItems.length, this.defaultValues.minSectors);
 		this.scale = this.calculateScale();
 
@@ -536,14 +561,16 @@ class RadialMenu
 			{
 				const itemToSelect = items[0];
 				const selectedNode = this.getSelectedNode();
+				let itemClasses = [this.ui.classes.itemSector, this.ui.classes.itemSelected];
 				if (selectedNode)
 				{
 					selectedNode.setAttribute('class', this.ui.classes.itemSector);
 				}
-				itemToSelect.setAttribute(
-					'class',
-					[this.ui.classes.itemSector, this.ui.classes.itemSelected].join(' ')
-				);
+				if (itemToSelect.items && itemToSelect.items.length > 0)
+				{
+					itemClasses.push(this.ui.classes.itemSectorNested);
+				}
+				itemToSelect.setAttribute('class', itemClasses.join(' '));
 			}
 		}
 	}
@@ -579,14 +606,16 @@ class RadialMenu
 
 		if (item)
 		{
-			g.setAttribute('class', this.ui.classes.itemSector);
+			let itemClasses = [this.ui.classes.itemSector];
 			if (item.selected && item.selected === true)
 			{
-				g.setAttribute(
-					'class',
-					[this.ui.classes.itemSector, this.ui.classes.itemSelected].join(' ')
-				);
+				itemClasses.push(this.ui.classes.itemSelected);
 			}
+			if (item.items && item.items.length > 0)
+			{
+				itemClasses.push(this.ui.classes.itemSectorNested);
+			}
+			g.setAttribute('class', itemClasses.join(' '));
 			g.setAttribute('data-id', item.id);
 			g.setAttribute('data-index', index);
 
@@ -617,7 +646,6 @@ class RadialMenu
 				}
 				g.appendChild(use);
 			}
-
 		}
 		else
 		{

@@ -107,7 +107,7 @@ window.onload = function ()
         parent: document.body,
         size: 400,
         closeOnClick: true,
-        // closeOnClickOutside: false,
+        closeOnClickOutside: false,
         menuItems: menuItems,
         onClick: function(item)
         {
@@ -123,13 +123,69 @@ window.onload = function ()
     {
         svgMenu.close();
     });
+    const svgMenu2 = new RadialMenu({
+        parent: document.body,
+        size: 400,
+        menuItems: [
+            {
+                id   : 'walk2',
+                title: 'Walk',
+                icon: '#walk'
+            },
+            {
+                id   : 'more2',
+                title: 'More...',
+                icon: '#more',
+                items: [
+                    {
+                        id   : 'eat2',
+                        title: 'Eat',
+                        icon: '#eat'
+                    },
+                    {
+                        id   : 'sleep2',
+                        title: 'Sleep',
+                        icon: '#sleep',
+                        selected: true
+                    },
+                    {
+                        id: 'more3',
+                        title: 'More...',
+                        icon: '#more',
+                        items: [
+                            {
+                                id: 'shower2',
+                                title: 'Take Shower',
+                                icon: '#shower'
+                            },
+                            {
+                                id: 'workout2',
+                                icon: '#workout',
+                                title: 'Work Out'
+                            },
+                        ]
+                    }
+                ]
+            }
+        ],
+        ui: {
+            classes: {
+                menuContainer: "menuHolder2",
+                menu: "menu2",
+                menuCreate: "menu2 inner",
+                menuCreateNested: "menu2 outer",
+                menuOpen: "open2",
+                menuClose: "close2"
+            }
+        }
+    });
     document.addEventListener('contextmenu', function(event)
     {
         event.preventDefault();
-        if (svgMenu.isOpen())
+        if (svgMenu2.isOpen())
         {
             return;
         }
-        svgMenu.open();
+        svgMenu2.open(event.x, event.y);
     });
 };

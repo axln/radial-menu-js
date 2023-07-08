@@ -68,6 +68,27 @@ var svgMenu = new RadialMenu({
     nested: { // nested ~ inner-menu behavior
         icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
         title: true // show nested title?
+    },
+
+    ui: { // ui customization
+        classes: {
+            menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
+            menu: "menu",
+            menuOpen: "open", // menu is visible [open]
+            menuClose: "close", // menu is not-visible [close]
+            menuCreateParent: "menu inner", // main menu [{menu} inner]
+            menuCreateNested: "menu outer", // nested menu [{menu} outer]
+            itemSelected: "selected", // item, which is [selected]
+            itemIcon: "icons", // item's icon
+            itemSector: "sector", // item, which is active
+            itemSectorNested: "more", // item, which has nested items... [more]
+            itemDummy: "dummy", // item, which is not active
+            buttonCenter: "center", // button (close, back) ~ centered!
+        },
+        icons: {
+            back: {title: "Back", icon: "#return"},
+            close: {title: "Close", icon: "#close"},
+        }
     }
 }
 ```
