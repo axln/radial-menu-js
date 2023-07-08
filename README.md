@@ -88,6 +88,14 @@ var svgMenu = new RadialMenu({
             icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
             title: true // show nested title?
         },
+        moveByWheel: true, // navigation by mouse-wheel. [default: true]
+        moveByKeys: { // navigation by keys. [default: true]
+            enabled: true,
+            back: ["escape", "backspace"],
+            select: ["enter"],
+            forward: ["arrowRight", "arrowUp"],
+            backward: ["arrowLeft", "arrowDown"]
+        }
     }
 }
 ```

@@ -44,6 +44,14 @@ class RadialMenu
 				title: true, // show nested title?
 				//TODO:?it can show (number of nested menu)?
 				//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
+			},
+			moveByWheel: true, // navigation by mouse-wheel. [default: true]
+			moveByKeys: { // navigation by keys. [default: true]
+				enabled: true,
+				back: ["escape", "backspace"],
+				select: ["enter"],
+				forward: ["arrowRight", "arrowUp"],
+				backward: ["arrowLeft", "arrowDown"]
 			}
 		}
 	}
@@ -53,7 +61,7 @@ class RadialMenu
 		const defaultValues = this.merge({}, RadialMenu._defaultValues);
 		this.defaultValues = defaultValues;
 		this.uuid = this.generateUUID();
-		this.parent = params.parent || [];//TODO: refactor: ?this.attr = this.merge(defaultValues, params);?
+		this.parent = params.parent || [];
 		this.size = params.size || defaultValues.size;
 		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
@@ -76,7 +84,7 @@ class RadialMenu
 			defaultValues.ui,
 			params.ui || {}
 		);
-		this.scale = 1;//TODO:?do we need different scale?
+		this.scale = 1;
 		this.holder = null;
 		this.parentMenu = [];
 		this.parentItems = [];
@@ -86,8 +94,14 @@ class RadialMenu
 		this.addIconSymbols();//TODO:?iconSymbolsFactory?
 
 		this.currentMenu = null;
-		document.addEventListener('wheel', this.onMouseWheel.bind(this));//TODO:?enable/disable?
-		document.addEventListener('keydown', this.onKeyDown.bind(this));//TODO:?enable/disable?
+		if (this.ui.moveByWheel)
+		{
+			document.addEventListener('wheel', this.onMouseWheel.bind(this));
+		}
+		if (this.ui.moveByKeys)
+		{
+			document.addEventListener('keydown', this.onKeyDown.bind(this));
+		}
 	}
 
 	generateUUID()
@@ -364,7 +378,10 @@ class RadialMenu
 			const use = this.createUseTag(0, 0, icon);
 			use.setAttribute('width', size);
 			use.setAttribute('height', size);
-			use.setAttribute('transform', 'translate(-' + this.numberToString(size / 2) + ',-' + this.numberToString(size / 2) + ')');
+			use.setAttribute(
+				'transform',
+				'translate(-' + this.numberToString(size / 2) + ',-' + this.numberToString(size / 2) + ')'
+			);
 			g.appendChild(use);
 		}
 		svg.appendChild(g);
@@ -489,39 +506,43 @@ class RadialMenu
 		{
 			return;
 		}
-		//TODO:?enable keys?which one?
-		switch (event.key)
+		if (this.isKeyDown(event, this.ui.moveByKeys.back))
 		{
-			case 'Escape':
-			case 'Backspace':
-			{
-				this.handleCenterClick();
-				event.preventDefault();
-				break;
-			}
-			case 'Enter':
-			{
-				this.handleClick();
-				event.preventDefault();
-				break;
-			}
-			case 'ArrowRight':
-			case 'ArrowUp':
-			{
-				this.selectDelta(+1);
-				event.preventDefault();
-				break;
-			}
-			case 'ArrowLeft':
-			case 'ArrowDown':
-			{
-				this.selectDelta(-1);
-				event.preventDefault();
-				break;
-			}
-			default:
-				break;
+			this.handleCenterClick();
+			event.preventDefault();
+			return;
 		}
+		if (this.isKeyDown(event, this.ui.moveByKeys.select))
+		{
+			this.handleClick();
+			event.preventDefault();
+			return;
+		}
+		if (this.isKeyDown(event, this.ui.moveByKeys.forward))
+		{
+			this.selectDelta(+1);
+			event.preventDefault();
+			return;
+		}
+		if (this.isKeyDown(event, this.ui.moveByKeys.backward))
+		{
+			this.selectDelta(-1);
+			event.preventDefault();
+			return;
+		}
+	}
+
+	isKeyDown(event, keySet)
+	{
+		const keyId = event.key.toLowerCase();
+		for(let i = 0; i < keySet.length; i++)
+		{
+			if (keyId === keySet[i].toLowerCase())
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	onMouseWheel(event)
@@ -775,14 +796,14 @@ class RadialMenu
 		else
 		if (n)
 		{
-			let r = (+n).toFixed(5);//TODO:?magicNumber?
+			let r = (+n).toFixed(5);
 			if (r.match(/\./))
 			{
 				r = r.replace(/\.?0+$/, '');
 			}
 			return r;
 		}
-		// TODO:?if is NaN? what to do?
+		return "";
 	}
 
 	resolveLoopIndex(index, length)
