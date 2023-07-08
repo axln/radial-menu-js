@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css?family=Bitter&subset=latin");
 div.menuHolder2
 { /* menu-container */
 	user-select: none;
@@ -8,6 +9,8 @@ div.menuHolder2
 	top: 0px;
 	left: 0px;
 	z-index: -1;
+
+	font-family: Bitter;
 }
 
 div.menuHolder2.open2
@@ -47,14 +50,14 @@ svg.menu2.open2
 	border-radius: 50%;
 }
 
-svg.menu2.inner
+svg.menu2.inner2
 {
 	transform: scale(0.66) rotate(-10deg);
 	opacity: 0;
 	visibility: hidden;
 }
 
-svg.menu2.outer
+svg.menu2.outer2
 {
 	transform: scale(1.5) rotate(10deg);
 	opacity: 0;

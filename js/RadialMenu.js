@@ -1,15 +1,15 @@
 'use strict';
 
 /**
- * Radial menu in pure JavaScript, HTML and SVG
+ * Radial menu in pure JavaScript, HTML and SVG.
  * License: MIT
+ * Copyright (c) 2019 Alexey Nesterenko
  * -- https://github.com/axln/radial-menu-js
  * -- https://github.com/j3nda/radial-menu-js
  */
 class RadialMenu
 {
 	static _defaultValues = {
-		size: 100, // aka DEFAULT_SIZE
 		minSectors: 6, // aka MIN_SECTORS
 		radius: {
 			value: 50,
@@ -21,29 +21,31 @@ class RadialMenu
 		closeOnClick: true, // true or function(); will close(); after item is selected. [default: onClickFallback()]
 		closeOnClickOutside: true, // true or function(); it will close(); when item is not selected and click is outside of menu. [default: true]
 		ui: {
+			fontSize: "38%", // text font-size of elements inside {menuContainer}, eg: text in {itemSector} [38%]
 			classes: {
-				menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
-				menu: "menu",
+				menuContainer: "menuHolder", // whole radial-menu container, created dynamically! see: {params.parent}
+				menuCreate: "menu",
+				menuCreateParent: "inner", // main menu [{menuCreate} inner]
+				menuCreateNested: "outer", // nested menu [{menuCreate} outer]
 				menuOpen: "open", // menu is visible [open]
 				menuClose: "close", // menu is not-visible [close]
-				menuCreateParent: "menu inner", // main menu [{menu} inner]
-				menuCreateNested: "menu outer", // nested menu [{menu} outer]
-				itemSelected: "selected", // item, which is [selected]
-				itemIcon: "icons", // item's icon
-				itemSector: "sector", // item, which is active
+				itemSectorActive: "sector", // item, which is active and can be selected
 				itemSectorNested: "more", // item, which has nested items... [more]
-				itemDummy: "dummy", // item, which is not active
-				buttonCenter: "center", // button (close, back) ~ centered!
+				itemSectorDisabled: "dummy", // item, which is not-active/disabled [dummy]
+				itemSelected: "selected", // item, which is selected [selected]
+				closeBackButton: "center", // centered {close} or {back} button [centered]
+				iconsContainer: "icons", // item's icon container [icons]
 			},
-			icons: {
-				back: {title: "Back", icon: "#return"},
+			item: { // pre-defined items: {close} and {back} in similar way like: {menuItems}
 				close: {title: "Close", icon: "#close"},
+				back: {title: "Back", icon: "#return"},
+				// TODO: [ui/item] fontColor, textColor, ?position?
 			},
 			nested: {
 				icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
 				title: true, // show nested title?
-				//TODO:?it can show (number of nested menu)?
-				//TODO:?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
+				// TODO: [ui] ?it can show (number of nested menu)?
+				// TODO: [ui] ?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
 			},
 			moveByWheel: true, // navigation by mouse-wheel. [default: true]
 			moveByKeys: { // navigation by keys. [default: true]
@@ -56,14 +58,20 @@ class RadialMenu
 		}
 	}
 
-	constructor(params)
+	/**
+	 * create RadialMenu
+	 * @param menuItems array of items, eg: [{id: "one", icon: "One"}, {id: "two", title: "two"}, {id: "more", icon: "more", title: "More...", items: [...]}]
+	 * @param sizeInPixels
+	 * @param params custom parameters to override {...}
+	 */
+	constructor(menuItems, sizeInPixels, params)
 	{
 		const defaultValues = this.merge({}, RadialMenu._defaultValues);
 		this.defaultValues = defaultValues;
 		this.uuid = this.generateUUID();
-		this.parent = params.parent || [];
-		this.size = params.size || defaultValues.size;
-		this.menuItems = params.menuItems ? params.menuItems : [{id: 'one', title: 'One'}, {id: 'two', title: 'Two'}];
+		this.parent = params.parent || document.body;
+		this.size = sizeInPixels;
+		this.menuItems = menuItems;
 		this.radius = params.radius ? params.radius : defaultValues.radius.value;
 		this.innerRadius = params.innerRadius
 			? params.innerRadius
@@ -104,10 +112,14 @@ class RadialMenu
 		}
 	}
 
+	/**
+	 * generate UUID
+	 * -- https://stackoverflow.com/questions/105034/how-do-i-create-a-guid-uuid
+	 * -- https://stackoverflow.com/a/8809472/6130410
+	 * @returns {string}
+	 */
 	generateUUID()
 	{
-		// -- https://stackoverflow.com/questions/105034/how-do-i-create-a-guid-uuid
-		// License: Public Domain / MIT
 		let d1 = new Date().getTime();//Timestamp
 		let d2 = ((typeof performance !== 'undefined') && performance.now && (performance.now() * 1000)) || 0; // Time in microseconds since page-load or 0 if unsupported
 		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
@@ -138,26 +150,17 @@ class RadialMenu
 		throw "onClick: function(item) {...}; // must be defined by params or default!";
 	}
 
-	onClickCallback(item)
-	{
-		if (this.closeOnClick)
-		{
-			this.close();
-		}
-		if (this.onClick && this.onClick instanceof Function)
-		{
-			this.onClick(item);
-			return;
-		}
-		this.onClickFallback(item);
-	}
-
+	/** return true if menu is visible, otherwise returns false. */
 	isOpen()
 	{
 		return (this.currentMenu !== null);
 	}
 
-	onClickOutside(event, THIS)
+	/**
+	 * handle mouse-click or tap, when its outside of menu.
+	 * -- https://www.w3docs.com/snippets/javascript/how-to-detect-a-click-outside-an-element.html
+	 */
+	handleClickOutside(event, THIS)
 	{
 		const menu = document.getElementById(THIS.uuid);
 		if (!menu || THIS.uuid !== menu.id)
@@ -191,7 +194,10 @@ class RadialMenu
 		{
 			return;
 		}
-		this.currentMenu = this.createMenu(this.ui.classes.menuCreateParent, this.menuItems);
+		this.currentMenu = this.createMenu(
+			[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' '),
+			this.menuItems
+		);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
@@ -200,13 +206,13 @@ class RadialMenu
 		{
 			THIS.currentMenu.setAttribute(
 				'class',
-				[THIS.ui.classes.menu, THIS.ui.classes.menuOpen].join(' ')
+				[THIS.ui.classes.menuCreate, THIS.ui.classes.menuOpen].join(' ')
 			);
 			if (THIS.closeOnClickOutside)
 			{
 				document.addEventListener('click', THIS.closeOnClickOutsideListener = function(event)
 				{
-					THIS.onClickOutside(event, THIS);
+					THIS.handleClickOutside(event, THIS);
 				});
 			}
 		});
@@ -237,7 +243,10 @@ class RadialMenu
 		this.parentItems = [];
 
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreateParent)
+		this.setClassAndWaitForTransition(
+				this.currentMenu,
+				[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' ')
+			)
 			.then(function()
 			{
 				if (THIS.currentMenu !== null)
@@ -256,6 +265,7 @@ class RadialMenu
 		;
 	}
 
+	/** default functionality as onClick(): function, which MUST be overridden through params! */
 	onClick(item)
 	{
 		return item;
@@ -285,17 +295,24 @@ class RadialMenu
 	{
 		this.parentMenu.push(this.currentMenu);
 		this.parentItems.push(this.levelItems);
-		this.currentMenu = this.createMenu(this.ui.classes.menuCreateParent, item.items, item);
+		this.currentMenu = this.createMenu(
+			[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' '),
+			item.items,
+			item
+		);
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
 		const THIS = this;
 		this.postRunnable(function()
 		{
-			THIS.getParentMenu().setAttribute('class', THIS.ui.classes.menuCreateNested);
+			THIS.getParentMenu().setAttribute(
+				'class',
+				[THIS.ui.classes.menuCreate, THIS.ui.classes.menuCreateNested].join(' ')
+			);
 			THIS.currentMenu.setAttribute(
 				'class',
-				[THIS.ui.classes.menu, THIS.ui.classes.menuOpen].join(' ')
+				[THIS.ui.classes.menuCreate, THIS.ui.classes.menuOpen].join(' ')
 			);
 		});
 	}
@@ -304,10 +321,13 @@ class RadialMenu
 	{
 		this.getParentMenu().setAttribute(
 			'class',
-			[this.ui.classes.menu, this.ui.classes.menuOpen].join(' ')
+			[this.ui.classes.menuCreate, this.ui.classes.menuOpen].join(' ')
 		);
 		const THIS = this;
-		this.setClassAndWaitForTransition(this.currentMenu, this.ui.classes.menuCreateParent)
+		this.setClassAndWaitForTransition(
+				this.currentMenu,
+				[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' ')
+			)
 			.then(function()
 			{
 				THIS.currentMenu.remove();
@@ -317,6 +337,7 @@ class RadialMenu
 		;
 	}
 
+	/** handle click inside menu, eg: choosing item. */
 	handleClick()
 	{
 		const selectedIndex = this.getSelectedIndex();
@@ -328,10 +349,20 @@ class RadialMenu
 				this.showNestedMenu(item);
 				return;
 			}
-			this.onClickCallback(item);
+			if (this.closeOnClick)
+			{
+				this.close();
+			}
+			if (this.onClick && this.onClick instanceof Function)
+			{
+				this.onClick(item);
+				return;
+			}
+			this.onClickFallback(item);
 		}
 	}
 
+	/** handle click in the center, eg: close or back-button */
 	handleCenterClick()
 	{
 		if (this.parentItems.length > 0)
@@ -353,19 +384,27 @@ class RadialMenu
 		// RadialMenu.prototype.handleCenterClick = function () {...}
 	}
 
-	createCenter(svg, title, icon, size, nested = null)
+	/**
+	 * create center button, eg: close or back-button
+	 * @param svg parentSvgElement
+	 * @param title
+	 * @param icon
+	 * @param size
+	 * @param nested am i nested? yes, here is my parentItem
+	 */
+	createCenter(svg, title, icon, size, nested = undefined)
 	{
 		size = size || 8;//TODO:?magicNumber?default value?
 
 		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-		g.setAttribute('class', this.ui.classes.buttonCenter);
+		g.setAttribute('class', this.ui.classes.closeBackButton);
 
 		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
 		g.appendChild(centerCircle);
 
 		if (nested && this.ui.nested.title)
 		{
-			const text = this.createText(0, +size, nested.title);
+			const text = this.createItemText(0, +size, nested);
 			g.appendChild(text);
 		}
 
@@ -405,6 +444,7 @@ class RadialMenu
 		return -1;
 	}
 
+	/** create all items for currently visible menu, eg: main menu or nested one */
 	createMenu(classValue, levelItems, nested)
 	{
 		const THIS = this;
@@ -437,11 +477,11 @@ class RadialMenu
 
 		if (nested)
 		{
-			this.createCenter(svg, this.ui.icons.back.title, this.ui.icons.back.icon, 8, nested); //TODO:??magicNumber??
+			this.createCenter(svg, this.ui.item.back.title, this.ui.item.back.icon, 8, nested); //TODO:??magicNumber??
 		}
 		else
 		{
-			this.createCenter(svg, this.ui.icons.close.title, this.ui.icons.close.icon, 7);//TODO:??magicNumber??
+			this.createCenter(svg, this.ui.item.close.title, this.ui.item.close.icon, 7);//TODO:??magicNumber??
 		}
 
 		svg.addEventListener('mousedown', function(event)
@@ -449,7 +489,7 @@ class RadialMenu
 			const classNames = event.target.parentNode.getAttribute('class').split(' ');
 			for (let i = 0; i < classNames.length; i++)
 			{
-				if (classNames[i] === THIS.ui.classes.itemSector)
+				if (classNames[i] === THIS.ui.classes.itemSectorActive)
 				{
 					const index = parseInt(event.target.parentNode.getAttribute('data-index'));
 					if (!isNaN(index))
@@ -465,12 +505,12 @@ class RadialMenu
 			const classNames = event.target.parentNode.getAttribute('class').split(' ');
 			for (let i = 0; i < classNames.length; i++)
 			{
-				if (classNames[i] === THIS.ui.classes.itemSector)
+				if (classNames[i] === THIS.ui.classes.itemSectorActive)
 				{
 					THIS.handleClick();
 					break;
 				}
-				if (classNames[i] === THIS.ui.classes.buttonCenter)
+				if (classNames[i] === THIS.ui.classes.closeBackButton)
 				{
 					THIS.handleCenterClick();
 					break;
@@ -480,6 +520,7 @@ class RadialMenu
 		return svg;
 	}
 
+	/** setSelectedIndex() based on +/- indexDelta, eg: onMouseWheel */
 	selectDelta(indexDelta)
 	{
 		let selectedIndex = this.getSelectedIndex();
@@ -584,10 +625,10 @@ class RadialMenu
 			{
 				const itemToSelect = items[0];
 				const selectedNode = this.getSelectedNode();
-				let itemClasses = [this.ui.classes.itemSector, this.ui.classes.itemSelected];
+				let itemClasses = [this.ui.classes.itemSectorActive, this.ui.classes.itemSelected];
 				if (selectedNode)
 				{
-					selectedNode.setAttribute('class', this.ui.classes.itemSector);
+					selectedNode.setAttribute('class', this.ui.classes.itemSectorActive);
 				}
 				if (itemToSelect.items && itemToSelect.items.length > 0)
 				{
@@ -629,7 +670,7 @@ class RadialMenu
 
 		if (item)
 		{
-			let itemClasses = [this.ui.classes.itemSector];
+			let itemClasses = [this.ui.classes.itemSectorActive];
 			if (item.selected && item.selected === true)
 			{
 				itemClasses.push(this.ui.classes.itemSelected);
@@ -644,7 +685,7 @@ class RadialMenu
 
 			if (item.title)
 			{
-				const text = this.createText(centerPoint.x, centerPoint.y, item.title);
+				const text = this.createItemText(centerPoint.x, centerPoint.y, item);
 				if (item.icon)
 				{
 					text.setAttribute('transform', 'translate(0,8)');
@@ -672,7 +713,7 @@ class RadialMenu
 		}
 		else
 		{
-			g.setAttribute('class', this.ui.classes.itemDummy);
+			g.setAttribute('class', this.ui.classes.itemSectorDisabled);
 		}
 		svg.appendChild(g);
 	};
@@ -696,15 +737,15 @@ class RadialMenu
 		return path;
 	}
 
-	createText(x, y, title)
+	createItemText(x, y, item)
 	{
 		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
 		text.setAttribute('text-anchor', 'middle');
 		text.setAttribute('x', this.numberToString(x));
 		text.setAttribute('y', this.numberToString(y));
-		text.setAttribute('font-size', '38%');//TODO:?fontSize?
-		text.innerHTML = title;
+		text.setAttribute('font-size', item.fontSize ?? this.ui.fontSize);
+		text.innerHTML = item.title;
 
 		return text;
 	}
@@ -740,7 +781,7 @@ class RadialMenu
 	addIconSymbols()
 	{
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('class', this.ui.classes.itemIcon);
+		svg.setAttribute('class', this.ui.classes.iconsContainer);
 
 		// return
 		const returnSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
@@ -771,7 +812,7 @@ class RadialMenu
 		closeSymbol.appendChild(closePath);
 
 		svg.appendChild(closeSymbol);
-		this.holder.appendChild(svg);
+		this.holder.appendChild(svg);//TODO:refactor:return svg; rename createIcon(type);
 	}
 
 	getDegreePosition(angleDeg, length)
@@ -851,6 +892,10 @@ class RadialMenu
 		setTimeout(fn, timeoutMs);
 	}
 
+	/**
+	 * return true if its object, otherwise returns false.
+	 * (part of merge() functionality)
+	 */
 	isObject(item)
 	{
 		return (item && typeof item === 'object' && !Array.isArray(item));

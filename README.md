@@ -66,23 +66,24 @@ var svgMenu = new RadialMenu({
     closeOnClickOutside: true, // true or function(); it will menu.close(), when item is not selected and click is outside of menu. [default: true]
     
     ui: { // ui customization
+        fontSize: "38%", // text font-size of elements inside {menuContainer}, eg: text in {itemSector} [38%]
         classes: {
-            menuContainer: "menuHolder", // whole radial-menu container, created dynamically!
-            menu: "menu",
+            menuContainer: "menuHolder", // whole radial-menu container, created dynamically! see: {params.parent}
+            menuCreate: "menu",
+            menuCreateParent: "inner", // main menu [{menuCreate} inner]
+            menuCreateNested: "outer", // nested menu [{menuCreate} outer]
             menuOpen: "open", // menu is visible [open]
             menuClose: "close", // menu is not-visible [close]
-            menuCreateParent: "menu inner", // main menu [{menu} inner]
-            menuCreateNested: "menu outer", // nested menu [{menu} outer]
-            itemSelected: "selected", // item, which is [selected]
-            itemIcon: "icons", // item's icon
-            itemSector: "sector", // item, which is active
+            itemSectorActive: "sector", // item, which is active and can be selected
             itemSectorNested: "more", // item, which has nested items... [more]
-            itemDummy: "dummy", // item, which is not active
-            buttonCenter: "center", // button (close, back) ~ centered!
+            itemSectorDisabled: "dummy", // item, which is not-active/disabled [dummy]
+            itemSelected: "selected", // item, which is selected [selected]
+            closeBackButton: "center", // centered {close} or {back} button [centered]
+            iconsContainer: "icons", // item's icon container [icons]
         },
-        icons: {
-            back: {title: "Back", icon: "#return"},
+        item: { // pre-defined items: {close} and {back} in similar way like: {menuItems}
             close: {title: "Close", icon: "#close"},
+            back: {title: "Back", icon: "#return"},
         },
         nested: { // nested ~ inner-menu behavior
             icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
