@@ -37,8 +37,28 @@ class RadialMenu
 				iconsContainer: "icons", // item's icon container [icons]
 			},
 			item: { // pre-defined items: {close} and {back} in similar way like: {menuItems}
-				close: {title: "Close", icon: "#close"},
-				back: {title: "Back", icon: "#return"},
+				close: {
+					title: "Close",
+					icon: "#close",
+					symbol: { // default icon fallback...
+						id: "close",
+						viewBox: "0 0 41.756 41.756",
+						paths: [
+							"M27.948,20.878L40.291,8.536c1.953-1.953,1.953-5.119,0-7.071c-1.951-1.952-5.119-1.952-7.07,0L20.878,13.809L8.535,1.465c-1.951-1.952-5.119-1.952-7.07,0c-1.953,1.953-1.953,5.119,0,7.071l12.342,12.342L1.465,33.22c-1.953,1.953-1.953,5.119,0,7.071C2.44,41.268,3.721,41.755,5,41.755c1.278,0,2.56-0.487,3.535-1.464l12.343-12.342l12.343,12.343c0.976,0.977,2.256,1.464,3.535,1.464s2.56-0.487,3.535-1.464c1.953-1.953,1.953-5.119,0-7.071L27.948,20.878z"
+						]
+					}
+				},
+				back: {
+					title: "Back",
+					icon: "#return",
+					symbol: { // default icon fallback...
+						id: "return",
+						viewBox: "0 0 489.394 489.394",
+						paths: [
+							"M375.789,92.867H166.864l17.507-42.795c3.724-9.132,1-19.574-6.691-25.744c-7.701-6.166-18.538-6.508-26.639-0.879L9.574,121.71c-6.197,4.304-9.795,11.457-9.563,18.995c0.231,7.533,4.261,14.446,10.71,18.359l147.925,89.823c8.417,5.108,19.18,4.093,26.481-2.499c7.312-6.591,9.427-17.312,5.219-26.202l-19.443-41.132h204.886c15.119,0,27.418,12.536,27.418,27.654v149.852c0,15.118-12.299,27.19-27.418,27.19h-226.74c-20.226,0-36.623,16.396-36.623,36.622v12.942c0,20.228,16.397,36.624,36.623,36.624h226.74c62.642,0,113.604-50.732,113.604-113.379V206.709C489.395,144.062,438.431,92.867,375.789,92.867z"
+						]
+					}
+				},
 				// TODO: [ui/item] fontColor, textColor, ?position?
 			},
 			nested: {
@@ -99,7 +119,13 @@ class RadialMenu
 		this.levelItems = null;
 
 		this.createMenuContainer(this.ui.classes.menuContainer);
-		this.addIconSymbols();//TODO:?iconSymbolsFactory?
+
+		// default icons(close, back)
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svg.setAttribute('class', this.ui.classes.iconsContainer);
+		svg.appendChild(this.createItemSymbol(this.ui.item.close.symbol));
+		svg.appendChild(this.createItemSymbol(this.ui.item.back.symbol));
+		this.holder.appendChild(svg);
 
 		this.currentMenu = null;
 		if (this.ui.moveByWheel)
@@ -386,44 +412,43 @@ class RadialMenu
 
 	/**
 	 * create center button, eg: close or back-button
-	 * @param svg parentSvgElement
-	 * @param title
-	 * @param icon
+	 * @param item as {title: watawaka, icon: matafaka, etc...}
 	 * @param size
 	 * @param nested am i nested? yes, here is my parentItem
 	 */
-	createCenter(svg, title, icon, size, nested = undefined)
+	createCloseBackButton(item, size, nested = undefined)
 	{
-		size = size || 8;//TODO:?magicNumber?default value?
+		size = size || 8;//TODO:?magicNumber?default value?8?
 
-		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-		g.setAttribute('class', this.ui.classes.closeBackButton);
+		const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+		group.setAttribute('class', this.ui.classes.closeBackButton);
 
 		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
-		g.appendChild(centerCircle);
+		group.appendChild(centerCircle);
 
 		if (nested && this.ui.nested.title)
 		{
 			const text = this.createItemText(0, +size, nested);
-			g.appendChild(text);
+			group.appendChild(text);
 		}
 
-		if (icon)
+		if (item.icon)
 		{
+			let icon = item.icon;
 			if (nested && this.ui.nested.icon)
 			{
 				icon = (this.ui.nested.icon === true ? nested.icon : this.ui.nested.icon);
 			}
-			const use = this.createUseTag(0, 0, icon);
+			const use = this.createItemUse(0, 0, icon);
 			use.setAttribute('width', size);
 			use.setAttribute('height', size);
 			use.setAttribute(
 				'transform',
 				'translate(-' + this.numberToString(size / 2) + ',-' + this.numberToString(size / 2) + ')'
 			);
-			g.appendChild(use);
+			group.appendChild(use);
 		}
-		svg.appendChild(g);
+		return group;
 	}
 
 	getIndexOffset()
@@ -472,16 +497,22 @@ class RadialMenu
 			{
 				item = this.levelItems[itemIndex];
 			}
-			this.appendSectorPath(startAngle, endAngle, svg, item, itemIndex);
+			svg.appendChild(
+				this.createItemSector(startAngle, endAngle, item, itemIndex)
+			);
 		}
 
 		if (nested)
 		{
-			this.createCenter(svg, this.ui.item.back.title, this.ui.item.back.icon, 8, nested); //TODO:??magicNumber??
+			svg.appendChild(
+				this.createCloseBackButton(this.ui.item.back, 8, nested)//TODO:??magicNumber?8?
+			);
 		}
 		else
 		{
-			this.createCenter(svg, this.ui.item.close.title, this.ui.item.close.icon, 7);//TODO:??magicNumber??
+			svg.appendChild(
+				this.createCloseBackButton(this.ui.item.close, 7)//TODO:??magicNumber?7?
+			);
 		}
 
 		svg.addEventListener('mousedown', function(event)
@@ -639,21 +670,21 @@ class RadialMenu
 		}
 	}
 
-	createUseTag(x, y, link)
+	createItemUse(x, y, link)
 	{
 		const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
 
 		use.setAttribute('x', this.numberToString(x));
 		use.setAttribute('y', this.numberToString(y));
-		use.setAttribute('width', '10');
-		use.setAttribute('height', '10');
-		use.setAttribute('fill', 'white');
+		use.setAttribute('width', '10');//TODO:??magicNumber?10?
+		use.setAttribute('height', '10');//TODO:??magicNumber?10?
+		use.setAttribute('fill', 'white');//TODO:??magicNumber?color?
 		use.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', link);
 
 		return use;
 	}
 
-	appendSectorPath(startAngleDeg, endAngleDeg, svg, item, index)
+	createItemSector(startAngleDeg, endAngleDeg, item, index)
 	{
 		const centerPoint = this.getSectorPosition(startAngleDeg, endAngleDeg);
 		const translate = {
@@ -661,12 +692,12 @@ class RadialMenu
 			y: this.numberToString((1 - this.scale) * centerPoint.y),
 		};
 
-		const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-		g.setAttribute('transform', 'translate(' + translate.x + ' ,' + translate.y + ') scale(' + this.scale + ')');
+		const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+		group.setAttribute('transform', 'translate(' + translate.x + ' ,' + translate.y + ') scale(' + this.scale + ')');
 
 		const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-		path.setAttribute('d', this.createSector(startAngleDeg, endAngleDeg));
-		g.appendChild(path);
+		path.setAttribute('d', this.createItemSectorPath(startAngleDeg, endAngleDeg));
+		group.appendChild(path);
 
 		if (item)
 		{
@@ -679,9 +710,9 @@ class RadialMenu
 			{
 				itemClasses.push(this.ui.classes.itemSectorNested);
 			}
-			g.setAttribute('class', itemClasses.join(' '));
-			g.setAttribute('data-id', item.id);
-			g.setAttribute('data-index', index);
+			group.setAttribute('class', itemClasses.join(' '));
+			group.setAttribute('data-id', item.id);
+			group.setAttribute('data-index', index);
 
 			if (item.title)
 			{
@@ -694,12 +725,12 @@ class RadialMenu
 				{
 					text.setAttribute('transform', 'translate(0,2)');
 				}
-				g.appendChild(text);
+				group.appendChild(text);
 			}
 
 			if (item.icon)
 			{
-				const use = this.createUseTag(centerPoint.x, centerPoint.y, item.icon);
+				const use = this.createItemUse(centerPoint.x, centerPoint.y, item.icon);
 				if (item.title)
 				{
 					use.setAttribute('transform', 'translate(-5,-8)');
@@ -708,17 +739,17 @@ class RadialMenu
 				{
 					use.setAttribute('transform', 'translate(-5,-5)');
 				}
-				g.appendChild(use);
+				group.appendChild(use);
 			}
 		}
 		else
 		{
-			g.setAttribute('class', this.ui.classes.itemSectorDisabled);
+			group.setAttribute('class', this.ui.classes.itemSectorDisabled);
 		}
-		svg.appendChild(g);
+		return group;
 	};
 
-	createSector(startAngleDeg, endAngleDeg)
+	createItemSectorPath(startAngleDeg, endAngleDeg)
 	{
 		const initPoint = this.getDegreePosition(startAngleDeg, this.radius);
 		let path = 'M' + this.pointToString(initPoint);
@@ -778,41 +809,19 @@ class RadialMenu
 		);
 	}
 
-	addIconSymbols()
+	createItemSymbol(item)
 	{
-		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-		svg.setAttribute('class', this.ui.classes.iconsContainer);
+		const symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
+		symbol.setAttribute('id', item.id);
+		symbol.setAttribute('viewBox', item.viewBox);
 
-		// return
-		const returnSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
-		returnSymbol.setAttribute('id', 'return');
-		returnSymbol.setAttribute('viewBox', '0 0 489.394 489.394');
-
-		const returnPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-		returnPath.setAttribute('d', "M375.789,92.867H166.864l17.507-42.795c3.724-9.132,1-19.574-6.691-25.744c-7.701-6.166-18.538-6.508-26.639-0.879" +
-			"L9.574,121.71c-6.197,4.304-9.795,11.457-9.563,18.995c0.231,7.533,4.261,14.446,10.71,18.359l147.925,89.823" +
-			"c8.417,5.108,19.18,4.093,26.481-2.499c7.312-6.591,9.427-17.312,5.219-26.202l-19.443-41.132h204.886" +
-			"c15.119,0,27.418,12.536,27.418,27.654v149.852c0,15.118-12.299,27.19-27.418,27.19h-226.74c-20.226,0-36.623,16.396-36.623,36.622" +
-			"v12.942c0,20.228,16.397,36.624,36.623,36.624h226.74c62.642,0,113.604-50.732,113.604-113.379V206.709" +
-			"C489.395,144.062,438.431,92.867,375.789,92.867z");
-
-		returnSymbol.appendChild(returnPath);
-		svg.appendChild(returnSymbol);
-
-		// close
-		const closeSymbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
-		closeSymbol.setAttribute('id', 'close');
-		closeSymbol.setAttribute('viewBox', '0 0 41.756 41.756');
-
-		const closePath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-		closePath.setAttribute('d', "M27.948,20.878L40.291,8.536c1.953-1.953,1.953-5.119,0-7.071c-1.951-1.952-5.119-1.952-7.07,0L20.878,13.809L8.535,1.465" +
-			"c-1.951-1.952-5.119-1.952-7.07,0c-1.953,1.953-1.953,5.119,0,7.071l12.342,12.342L1.465,33.22c-1.953,1.953-1.953,5.119,0,7.071" +
-			"C2.44,41.268,3.721,41.755,5,41.755c1.278,0,2.56-0.487,3.535-1.464l12.343-12.342l12.343,12.343" +
-			"c0.976,0.977,2.256,1.464,3.535,1.464s2.56-0.487,3.535-1.464c1.953-1.953,1.953-5.119,0-7.071L27.948,20.878z");
-		closeSymbol.appendChild(closePath);
-
-		svg.appendChild(closeSymbol);
-		this.holder.appendChild(svg);//TODO:refactor:return svg; rename createIcon(type);
+		for(let i = 0; i < item.paths.length; i++)
+		{
+			const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+			path.setAttribute('d', item.paths[i]);
+			symbol.appendChild(path);
+		}
+		return symbol;
 	}
 
 	getDegreePosition(angleDeg, length)
