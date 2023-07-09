@@ -14,48 +14,28 @@
 ## Usage Example
  
  ```javascript
-var svgMenu = new RadialMenu({
-    parent      : document.body,
-    size        : 400,
-    closeOnClick: true,
-    menuItems   : [
-      {
-        id: 'item1',
-        title: 'Item 1'
-      },
-      {
-        id: 'item2',
-        title: 'Item 2'
-      },
-      {
-        id: 'more',
-        title: 'More...',
-        items: [
-          {
-            id: 'subitem1',
-            title: 'Subitem 1'
-          },
-          {
-            id: 'item2',
-            title: 'Subitem 2'
-          }
-        ]
-      }
-    ],
-    onClick: function (item) {
-      console.log('You have clicked:', item);
-    }
+var svgMenu = new RadialMenu([ // menuItems
+    {id: 'item1', title: 'Item 1'},
+    {id: 'item2', title: 'Item 2'},
+    {id: 'more', title: 'More...', items: [
+        {id: 'subitem1', title: 'Subitem 1'},
+        {id: 'item2', title: 'Subitem 2'}
+    ]}],
+    400,  // size
+    { // params
+        onClick: function (item) {
+            console.log('You have clicked:', item);
+        }
 });
-
-  var openMenu = document.getElementById('menu');
-  openMenu.onclick = function () {
+var openMenu = document.getElementById('menu');
+openMenu.onclick = function () {
     svgMenu.open();
-  };
+};
 
-  var closeMenu = document.getElementById('close');
-  closeMenu.onclick = function () {
+var closeMenu = document.getElementById('close');
+closeMenu.onclick = function () {
     svgMenu.close();
-  };
+};
 ```
 
 ## Configuration
