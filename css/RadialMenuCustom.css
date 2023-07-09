@@ -80,8 +80,7 @@ svg.menu2 > g.sector > use
 {
 	cursor: pointer;
 	fill: white;
-
-	/*text-shadow: 1px 1px 0 #000000A0;*/
+	text-shadow: 1px 1px 0 #000000A0;
 }
 
 svg.menu2 > g.sector:hover > path

@@ -74,7 +74,7 @@ var svgMenu = new RadialMenu({
             menuCreateNested: "outer", // nested menu [{menuCreate} outer]
             menuOpen: "open", // menu is visible [open]
             menuClose: "close", // menu is not-visible [close]
-            itemSectorActive: "sector", // item, which is active and can be selected
+            itemSectorActive: "sector", // item, which is active and can be selected [sector]
             itemSectorNested: "more", // item, which has nested items... [more]
             itemSectorDisabled: "dummy", // item, which is not-active/disabled [dummy]
             itemSelected: "selected", // item, which is selected [selected]
@@ -84,9 +84,15 @@ var svgMenu = new RadialMenu({
         item: { // pre-defined items: {close} and {back} in similar way like: {menuItems}
             close: {title: "Close", icon: "#close"},
             back: {title: "Back", icon: "#return"},
+            // FYI:
+            // 1) if u want to change, eg: 'close' icon, just use item.close.icon = '#myIconId'
+            // 2) if u want to override default 'icon' generation, see: RadialMenu.defaultValues.ui.item.{close, back}.symbol
+            // 3) to change item's colors, etc use: CSS:
+            //      svg.{menuCreate} > g.{itemSectorActive} > text,
+            //      svg.{menuCreate} > g.{itemSectorActive} > use {...}
         },
         nested: { // nested ~ inner-menu behavior
-            icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+            icon: "#return", // string(iconId:'#return') or true(for parentItem.icon)
             title: true // show nested title?
         },
         moveByWheel: true, // navigation by mouse-wheel. [default: true]
@@ -102,9 +108,10 @@ var svgMenu = new RadialMenu({
 ```
 
 ## License
-MIT
+
+[MIT](LICENSE)
 
 ## Contributors
 
-* [Alexey Nesterenko](https://github.com/axln) 
+* [Alexey Nesterenko](https://github.com/axln)
 * [Jan Smid](https://github.com/j3nda)

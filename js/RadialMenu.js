@@ -10,7 +10,7 @@
 class RadialMenu
 {
 	static _defaultValues = {
-		minSectors: 6, // aka MIN_SECTORS
+		minSectors: 6,
 		radius: {
 			value: 50,
 			multiInnerRadius: 0.4, // multiplication for default.radius.value [or params.radius]
@@ -60,9 +60,12 @@ class RadialMenu
 					}
 				},
 				// TODO: [ui/item] fontColor, textColor, ?position?
+				// to change item's colors, etc use: CSS:
+				// 		svg.{menuCreate} > g.{itemSectorActive} > text,
+				// 		svg.{menuCreate} > g.{itemSectorActive} > use {...}
 			},
 			nested: {
-				icon: "#return", // string(iconName:'#return') or true(for parentItem.icon)
+				icon: "#return", // string(iconId:'#return') or true(for parentItem.icon)
 				title: true, // show nested title?
 				// TODO: [ui] ?it can show (number of nested menu)?
 				// TODO: [ui] ?it can combine 'nested.icon' with '#return' icon ~ bestFitForSizes?
@@ -87,6 +90,7 @@ class RadialMenu
 	constructor(menuItems, sizeInPixels, params)
 	{
 		const defaultValues = this.merge({}, RadialMenu._defaultValues);
+
 		this.defaultValues = defaultValues;
 		this.uuid = this.generateUUID();
 		this.parent = params.parent || document.body;
@@ -118,13 +122,16 @@ class RadialMenu
 		this.parentItems = [];
 		this.levelItems = null;
 
-		this.createMenuContainer(this.ui.classes.menuContainer);
+		// menu container ~ this.holder
+		this.parent.appendChild(
+			this.holder = this.createMenuContainer(this.uuid, this.size, this.ui.classes.menuContainer)
+		);
 
 		// default icons(close, back)
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('class', this.ui.classes.iconsContainer);
-		svg.appendChild(this.createItemSymbol(this.ui.item.close.symbol));
-		svg.appendChild(this.createItemSymbol(this.ui.item.back.symbol));
+		svg.appendChild(this.createSvgSymbol(this.ui.item.close.symbol));
+		svg.appendChild(this.createSvgSymbol(this.ui.item.back.symbol));
 		this.holder.appendChild(svg);
 
 		this.currentMenu = null;
@@ -306,15 +313,16 @@ class RadialMenu
 		return null;
 	}
 
-	createMenuContainer(classValue)
+	createMenuContainer(uuid, size, classValue)
 	{
-		this.holder = document.createElement('div');
-		this.holder.id = this.uuid;
-		this.holder.className = classValue;
-		this.holder.style.width = this.size + 'px';
-		this.holder.style.height = this.size + 'px';
+		const container = document.createElement('div');
 
-		this.parent.appendChild(this.holder);
+		container.id = uuid;
+		container.className = classValue;
+		container.style.width = size + 'px';
+		container.style.height = size + 'px';
+
+		return container;
 	}
 
 	showNestedMenu(item)
@@ -389,7 +397,7 @@ class RadialMenu
 	}
 
 	/** handle click in the center, eg: close or back-button */
-	handleCenterClick()
+	handleClickCloseOrBack()
 	{
 		if (this.parentItems.length > 0)
 		{
@@ -423,12 +431,12 @@ class RadialMenu
 		const group = document.createElementNS('http://www.w3.org/2000/svg', 'g');
 		group.setAttribute('class', this.ui.classes.closeBackButton);
 
-		const centerCircle = this.createCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
+		const centerCircle = this.createSvgCircle(0, 0, this.innerRadius - this.sectorSpace / 3);
 		group.appendChild(centerCircle);
 
 		if (nested && this.ui.nested.title)
 		{
-			const text = this.createItemText(0, +size, nested);
+			const text = this.createSvgText(0, +size, nested);
 			group.appendChild(text);
 		}
 
@@ -439,7 +447,7 @@ class RadialMenu
 			{
 				icon = (this.ui.nested.icon === true ? nested.icon : this.ui.nested.icon);
 			}
-			const use = this.createItemUse(0, 0, icon);
+			const use = this.createSvgUse(0, 0, icon);
 			use.setAttribute('width', size);
 			use.setAttribute('height', size);
 			use.setAttribute(
@@ -543,7 +551,7 @@ class RadialMenu
 				}
 				if (classNames[i] === THIS.ui.classes.closeBackButton)
 				{
-					THIS.handleCenterClick();
+					THIS.handleClickCloseOrBack();
 					break;
 				}
 			}
@@ -580,7 +588,7 @@ class RadialMenu
 		}
 		if (this.isKeyDown(event, this.ui.moveByKeys.back))
 		{
-			this.handleCenterClick();
+			this.handleClickCloseOrBack();
 			event.preventDefault();
 			return;
 		}
@@ -670,7 +678,7 @@ class RadialMenu
 		}
 	}
 
-	createItemUse(x, y, link)
+	createSvgUse(x, y, link)
 	{
 		const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
 
@@ -716,7 +724,7 @@ class RadialMenu
 
 			if (item.title)
 			{
-				const text = this.createItemText(centerPoint.x, centerPoint.y, item);
+				const text = this.createSvgText(centerPoint.x, centerPoint.y, item);
 				if (item.icon)
 				{
 					text.setAttribute('transform', 'translate(0,8)');
@@ -730,7 +738,7 @@ class RadialMenu
 
 			if (item.icon)
 			{
-				const use = this.createItemUse(centerPoint.x, centerPoint.y, item.icon);
+				const use = this.createSvgUse(centerPoint.x, centerPoint.y, item.icon);
 				if (item.title)
 				{
 					use.setAttribute('transform', 'translate(-5,-8)');
@@ -751,6 +759,8 @@ class RadialMenu
 
 	createItemSectorPath(startAngleDeg, endAngleDeg)
 	{
+		// FIXME: if (this.minSectors < 4) it looks weird! itemSectorPath is somehow deformed!
+		// TODO: createItemSectorPath(more params, regards to created item, eg: {start, end}Angle...);
 		const initPoint = this.getDegreePosition(startAngleDeg, this.radius);
 		let path = 'M' + this.pointToString(initPoint);
 		const radiusAfterScale = this.radius * (1 / this.scale);
@@ -768,7 +778,7 @@ class RadialMenu
 		return path;
 	}
 
-	createItemText(x, y, item)
+	createSvgText(x, y, item)
 	{
 		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 
@@ -781,7 +791,7 @@ class RadialMenu
 		return text;
 	}
 
-	createCircle(x, y, r)
+	createSvgCircle(x, y, r)
 	{
 		const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
 
@@ -809,7 +819,7 @@ class RadialMenu
 		);
 	}
 
-	createItemSymbol(item)
+	createSvgSymbol(item)
 	{
 		const symbol = document.createElementNS('http://www.w3.org/2000/svg', 'symbol');
 		symbol.setAttribute('id', item.id);
