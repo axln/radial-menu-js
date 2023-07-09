@@ -20,7 +20,8 @@ div.menuHolder2.open2
 
 div.menuHolder2.close2
 { /* menu-container:close => its not visible */
-
+	z-index: -1;
+	visibility: hidden;
 }
 
 svg.icons

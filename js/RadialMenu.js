@@ -117,14 +117,14 @@ class RadialMenu
 			params.ui || {}
 		);
 		this.scale = 1;
-		this.holder = null;
-		this.parentMenu = [];
-		this.parentItems = [];
-		this.levelItems = null;
 
 		// menu container ~ this.holder
 		this.parent.appendChild(
-			this.holder = this.createMenuContainer(this.uuid, this.size, this.ui.classes.menuContainer)
+			this.holder = this.createMenuContainer(
+				this.uuid,
+				this.size,
+				[this.ui.classes.menuContainer, this.ui.classes.menuClose].join(' ')
+			)
 		);
 
 		// default icons(close, back)
@@ -134,7 +134,6 @@ class RadialMenu
 		svg.appendChild(this.createSvgSymbol(this.ui.item.back.symbol));
 		this.holder.appendChild(svg);
 
-		this.currentMenu = null;
 		if (this.ui.moveByWheel)
 		{
 			document.addEventListener('wheel', this.onMouseWheel.bind(this));
@@ -143,6 +142,8 @@ class RadialMenu
 		{
 			document.addEventListener('keydown', this.onKeyDown.bind(this));
 		}
+
+		this.initialize();
 	}
 
 	/**
@@ -153,21 +154,21 @@ class RadialMenu
 	 */
 	generateUUID()
 	{
-		let d1 = new Date().getTime();//Timestamp
-		let d2 = ((typeof performance !== 'undefined') && performance.now && (performance.now() * 1000)) || 0; // Time in microseconds since page-load or 0 if unsupported
+		let d1 = new Date().getTime(); // timestamp
+		let d2 = ((typeof performance !== 'undefined') && performance.now && (performance.now() * 1000)) || 0; // time in microseconds since page-load or 0 if unsupported
 		return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'
 			.replace(/[xy]/g, function(c)
 			{
 				let r = Math.random() * 16; // random number between 0 and 16
 				if (d1 > 0)
 				{
-					// Use timestamp until depleted
+					// use timestamp until depleted
 					r = (d1 + r) % 16 | 0;
 					d1 = Math.floor(d1 / 16);
 				}
 				else
 				{
-					// Use microseconds since page-load if supported
+					// use microseconds since page-load if supported
 					r = (d2 + r) % 16 | 0;
 					d2 = Math.floor(d2 / 16);
 				}
@@ -180,7 +181,7 @@ class RadialMenu
 	{
 		console.info(this.constructor.name + ".onClickFallback(item):");
 		console.info(item);
-		throw "onClick: function(item) {...}; // must be defined by params or default!";
+		console.error(this.constructor.name + "onClick: function(item) {...}; // must be defined by params or default!");
 	}
 
 	/** return true if menu is visible, otherwise returns false. */
@@ -196,7 +197,7 @@ class RadialMenu
 	handleClickOutside(event, THIS)
 	{
 		const menu = document.getElementById(THIS.uuid);
-		if (!menu || THIS.uuid !== menu.id)
+		if (!menu || THIS.uuid !== menu.id || !THIS.isOpen())
 		{
 			return;
 		}
@@ -218,7 +219,7 @@ class RadialMenu
 		{
 			THIS.closeOnClickOutside(THIS);
 		}
-		THIS.close();
+		THIS.close(true);
 	}
 
 	open(x = undefined, y = undefined)
@@ -227,10 +228,21 @@ class RadialMenu
 		{
 			return;
 		}
+		this.initialize();
 		this.currentMenu = this.createMenu(
 			[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' '),
 			this.menuItems
 		);
+
+		const alreadyOpened = this.holder.getElementsByClassName(this.ui.classes.menuCreate);
+		if (alreadyOpened)
+		{
+			// alreadyOpened? remove all... to start from scratch!
+			while(alreadyOpened.length > 0)
+			{
+				alreadyOpened[0].parentNode.removeChild(alreadyOpened[0]);
+			}
+		}
 		this.holder.appendChild(this.currentMenu);
 
 		// wait DOM commands to apply and then set class to allow transition to take effect
@@ -262,43 +274,59 @@ class RadialMenu
 		}
 	}
 
-	close()
+	close(force = false)
 	{
-		if (!this.isOpen())
+		if (!force && !this.isOpen())
 		{
 			return;
 		}
-		let parentMenu;
-		while (parentMenu = this.parentMenu.pop())
-		{
-			parentMenu.remove();
-		}
-		this.parentItems = [];
-
 		const THIS = this;
-		this.setClassAndWaitForTransition(
+		if (this.currentMenu !== null)
+		{
+			this.setClassAndWaitForTransition(
 				this.currentMenu,
 				[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' ')
 			)
-			.then(function()
+			.then(function ()
 			{
-				if (THIS.currentMenu !== null)
-				{
-					THIS.currentMenu.remove();
-				}
-				THIS.currentMenu = null;
-				if (THIS.closeOnClickOutside)
-				{
-					document.removeEventListener('click', THIS.closeOnClickOutsideListener);
-				}
-				const menuContainer = document.getElementById(THIS.uuid);
-				menuContainer.classList.remove(THIS.ui.classes.menuOpen);
-				menuContainer.classList.add(THIS.ui.classes.menuClose);
-			})
-		;
+				THIS.initialize();
+			});
+		}
+		if (this.closeOnClickOutside)
+		{
+			document.removeEventListener('click', this.closeOnClickOutsideListener);
+		}
+		this.postRunnable(function()
+		{
+			THIS.initialize();
+		}, 250);
 	}
 
-	/** default functionality as onClick(): function, which MUST be overridden through params! */
+	initialize()
+	{
+		this.level = 0;
+		this.currentMenu = null;
+		this.levelItems = null;
+		this.parentMenu = [];
+		this.parentItems = [];
+		const alreadyOpened = this.holder.getElementsByClassName(this.ui.classes.menuCreate);
+		if (alreadyOpened)
+		{
+			// alreadyOpened? remove all... to start from scratch!
+			while(alreadyOpened.length > 0)
+			{
+				alreadyOpened[0].parentNode.removeChild(alreadyOpened[0]);
+			}
+		}
+		const menuContainer = document.getElementById(this.uuid);
+		if (menuContainer)
+		{
+			menuContainer.classList.remove(this.ui.classes.menuOpen);
+			menuContainer.classList.add(this.ui.classes.menuClose);
+		}
+	}
+
+	/** default functionality as onClick(): function(), which MUST be overridden through params! */
 	onClick(item)
 	{
 		return item;
@@ -327,6 +355,11 @@ class RadialMenu
 
 	showNestedMenu(item)
 	{
+		if (!this.isOpen())
+		{
+			return;
+		}
+		this.level++;
 		this.parentMenu.push(this.currentMenu);
 		this.parentItems.push(this.levelItems);
 		this.currentMenu = this.createMenu(
@@ -340,9 +373,13 @@ class RadialMenu
 		const THIS = this;
 		this.postRunnable(function()
 		{
+			if (!THIS.isOpen())
+			{
+				return;
+			}
 			THIS.getParentMenu().setAttribute(
 				'class',
-				[THIS.ui.classes.menuCreate, THIS.ui.classes.menuCreateNested].join(' ')
+				[THIS.ui.classes.menuCreate, THIS.ui.classes.menuCreateNested, THIS.ui.classes.menuClose].join(' ')
 			);
 			THIS.currentMenu.setAttribute(
 				'class',
@@ -362,11 +399,14 @@ class RadialMenu
 				this.currentMenu,
 				[this.ui.classes.menuCreate, this.ui.classes.menuCreateParent].join(' ')
 			)
-			.then(function()
-			{
+			.then(function(){
 				THIS.currentMenu.remove();
 				THIS.currentMenu = THIS.parentMenu.pop();
 				THIS.levelItems = THIS.parentItems.pop();
+				THIS.currentMenu.setAttribute(
+					'class',
+					[THIS.ui.classes.menuCreate, THIS.ui.classes.menuOpen].join(' ')
+				);
 			})
 		;
 	}
@@ -374,6 +414,10 @@ class RadialMenu
 	/** handle click inside menu, eg: choosing item. */
 	handleClick()
 	{
+		if (!this.isOpen())
+		{
+			return;
+		}
 		const selectedIndex = this.getSelectedIndex();
 		if (selectedIndex >= 0)
 		{
@@ -383,39 +427,33 @@ class RadialMenu
 				this.showNestedMenu(item);
 				return;
 			}
+			let selectedItem = Object.assign({}, item);
 			if (this.closeOnClick)
 			{
-				this.close();
+				this.close(true);
 			}
 			if (this.onClick && this.onClick instanceof Function)
 			{
-				this.onClick(item);
+				this.onClick(selectedItem);
 				return;
 			}
-			this.onClickFallback(item);
+			this.onClickFallback(selectedItem);
 		}
 	}
 
 	/** handle click in the center, eg: close or back-button */
 	handleClickCloseOrBack()
 	{
+		if (!this.isOpen())
+		{
+			return;
+		}
 		if (this.parentItems.length > 0)
 		{
 			this.returnToParentMenu();
+			return;
 		}
-		else
-		{
-			this.close();
-		}
-		// FIXME: https://github.com/axln/radial-menu-js/issues/3
-		// When you are in a submenu and exit (any way) too fast,
-		//   the event in the function '''RadialMenu.prototype.handleCenterClick'''
-		//   call '''self.returnToParentMenu();''' instead of '''self.close();'''.
-		//   This makes it difficult to tell when the menu is completely closed
-		//
-		// radial-menu-js/js/RadialMenu.js
-		// Line 137 in 6d027fc
-		// RadialMenu.prototype.handleCenterClick = function () {...}
+		this.close(true);
 	}
 
 	/**
@@ -480,7 +518,6 @@ class RadialMenu
 	/** create all items for currently visible menu, eg: main menu or nested one */
 	createMenu(classValue, levelItems, nested)
 	{
-		const THIS = this;
 		this.levelItems = levelItems;
 		this.sectorCount = Math.max(this.levelItems.length, this.defaultValues.minSectors);
 		this.scale = this.calculateScale();
@@ -523,6 +560,7 @@ class RadialMenu
 			);
 		}
 
+		const THIS = this;
 		svg.addEventListener('mousedown', function(event)
 		{
 			const classNames = event.target.parentNode.getAttribute('class').split(' ');
@@ -905,9 +943,13 @@ class RadialMenu
 		});
 	}
 
+	/**
+	 * well, well, well naaacelniku :P
+	 * this will process function(); its very useful to be sure that data will be processed exactly same!
+	 * (basically u want to encapsulate data-manipulation due transitions-shlitz, eg: setClassAndWaitForTransition())
+	 */
 	postRunnable(fn, timeoutMs = 10)
 	{
-		//TODO:??idk if i like it. it looks messy due prev. RadialMenu.prototype approach!?
 		setTimeout(fn, timeoutMs);
 	}
 
